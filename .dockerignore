@@ -1,0 +1,13 @@
+.vscode/
+.github/
+.git/
+**/.gitignore
+charts/
+Dockerfile
+/proxmox-cloud-controller-manager*
+#
+# other
+*.md
+*.yml
+*.zip
+*.sql
