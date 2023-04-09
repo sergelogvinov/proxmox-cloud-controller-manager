@@ -1,4 +1,6 @@
 #
+/charts/proxmox-cloud-controller-manager/values-dev.yaml
 /proxmox-cloud-controller-manager*
 /kubeconfig
+/proxmox-config.yaml
 #

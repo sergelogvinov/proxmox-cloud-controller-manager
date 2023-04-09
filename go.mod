@@ -3,6 +3,7 @@ module github.com/sergelogvinov/proxmox-cloud-controller-manager
 go 1.20
 
 require (
+	github.com/Telmate/proxmox-api-go v0.0.0-20230329163449-4d08b16c14e0
 	github.com/spf13/pflag v1.0.5
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.26.3

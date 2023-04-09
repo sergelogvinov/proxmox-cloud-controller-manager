@@ -1,0 +1,198 @@
+---
+# Source: proxmox-cloud-controller-manager/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: proxmox-cloud-controller-manager
+  labels:
+    helm.sh/chart: proxmox-cloud-controller-manager-0.1.0
+    app.kubernetes.io/name: proxmox-cloud-controller-manager
+    app.kubernetes.io/instance: proxmox-cloud-controller-manager
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+  namespace: kube-system
+---
+# Source: proxmox-cloud-controller-manager/templates/secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: proxmox-cloud-controller-manager
+  labels:
+    helm.sh/chart: proxmox-cloud-controller-manager-0.1.0
+    app.kubernetes.io/name: proxmox-cloud-controller-manager
+    app.kubernetes.io/instance: proxmox-cloud-controller-manager
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+  namespace: kube-system
+data:
+  config.yaml: "Y2x1c3RlcnM6IFtd"
+---
+# Source: proxmox-cloud-controller-manager/templates/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:proxmox-cloud-controller-manager
+  labels:
+    helm.sh/chart: proxmox-cloud-controller-manager-0.1.0
+    app.kubernetes.io/name: proxmox-cloud-controller-manager
+    app.kubernetes.io/instance: proxmox-cloud-controller-manager
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+rules:
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - nodes/status
+  verbs:
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts/token
+  verbs:
+  - create
+---
+# Source: proxmox-cloud-controller-manager/templates/rolebinding.yaml
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: system:proxmox-cloud-controller-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:proxmox-cloud-controller-manager
+subjects:
+- kind: ServiceAccount
+  name: proxmox-cloud-controller-manager
+  namespace: kube-system
+---
+# Source: proxmox-cloud-controller-manager/templates/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: system:proxmox-cloud-controller-manager:extension-apiserver-authentication-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: proxmox-cloud-controller-manager
+    namespace: kube-system
+---
+# Source: proxmox-cloud-controller-manager/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxmox-cloud-controller-manager
+  labels:
+    helm.sh/chart: proxmox-cloud-controller-manager-0.1.0
+    app.kubernetes.io/name: proxmox-cloud-controller-manager
+    app.kubernetes.io/instance: proxmox-cloud-controller-manager
+    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/managed-by: Helm
+  namespace: kube-system
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: proxmox-cloud-controller-manager
+      app.kubernetes.io/instance: proxmox-cloud-controller-manager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: proxmox-cloud-controller-manager
+        app.kubernetes.io/instance: proxmox-cloud-controller-manager
+    spec:
+      serviceAccountName: proxmox-cloud-controller-manager
+      securityContext:
+        fsGroup: 10258
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 10258
+        runAsNonRoot: true
+        runAsUser: 10258
+      containers:
+        - name: proxmox-cloud-controller-manager
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          image: "ghcr.io/sergelogvinov/proxmox-cloud-controller-manager:811670e"
+          imagePullPolicy: IfNotPresent
+          command: ["/proxmox-cloud-controller-manager"]
+          args:
+            - --v=2
+            - --cloud-provider=proxmox
+            - --cloud-config=/etc/proxmox/config.yaml
+            - --controllers=cloud-node,cloud-node-lifecycle
+            - --leader-elect-resource-name=cloud-controller-manager-proxmox
+            - --use-service-account-credentials
+            - --secure-port=10258
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 10258
+              scheme: HTTPS
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+          volumeMounts:
+            - name: cloud-config
+              mountPath: /etc/proxmox
+              readOnly: true
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+        - effect: NoSchedule
+          key: node.cloudprovider.kubernetes.io/uninitialized
+          operator: Exists
+      volumes:
+        - name: cloud-config
+          secret:
+            secretName: proxmox-cloud-controller-manager
+            defaultMode: 416 # 0640

@@ -2,7 +2,10 @@
 .github/
 .git/
 **/.gitignore
+#
 charts/
+docs/
+hack/
 Dockerfile
 /proxmox-cloud-controller-manager*
 #

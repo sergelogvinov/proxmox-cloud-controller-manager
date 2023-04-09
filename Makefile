@@ -32,7 +32,7 @@ To build this project, you must have the following installed:
 
 - git
 - make
-- golang 1.19
+- golang 1.20+
 - golangci-lint
 
 endef
@@ -45,6 +45,9 @@ help: ## This help menu.
 
 # Build Abstractions
 
+build-all-archs:
+	@for arch in $(ARCHS); do $(MAKE) ARCH=$${arch} build ; done
+
 .PHONY: build
 build: ## Build
 	CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) go build $(GO_LDFLAGS) \
@@ -52,7 +55,7 @@ build: ## Build
 
 .PHONY: run
 run: build
-	./proxmox-cloud-controller-manager-$(ARCH) --v=4 --kubeconfig=kubeconfig --cloud-config=hack/proxmox-config.yaml --controllers=cloud-node \
+	./proxmox-cloud-controller-manager-$(ARCH) --v=5 --kubeconfig=kubeconfig --cloud-config=proxmox-config.yaml --controllers=cloud-node,cloud-node-lifecycle \
 		--use-service-account-credentials --leader-elect=false --bind-address=127.0.0.1
 
 .PHONY: lint
@@ -62,3 +65,26 @@ lint: ## Lint
 .PHONY: unit
 unit:
 	go test -tags=unit $(shell go list ./...) $(TESTARGS)
+
+.PHONY: docs
+docs:
+	helm template -n kube-system proxmox-cloud-controller-manager \
+		--set-string image.tag=$(TAG) \
+		charts/proxmox-cloud-controller-manager > docs/deploy/cloud-controller-manager.yml
+
+# Docker stages
+
+docker-init:
+	docker run --rm --privileged multiarch/qemu-user-static:register --reset
+
+	docker context create multiarch ||:
+	docker buildx create --name multiarch --driver docker-container --use ||:
+	docker context use multiarch
+	docker buildx inspect --bootstrap multiarch
+
+.PHONY: images
+images:
+	@docker buildx build $(BUILD_ARGS) \
+		--build-arg TAG=$(TAG) \
+		-t $(IMAGE):$(TAG) \
+		-f Dockerfile .

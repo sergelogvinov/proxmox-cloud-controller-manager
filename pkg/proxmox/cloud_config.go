@@ -4,13 +4,16 @@ import (
 	"io"
 
 	yaml "gopkg.in/yaml.v3"
-
-	"k8s.io/klog/v2"
 )
 
 type cloudConfig struct {
-	Global struct {
-	} `yaml:"global,omitempty"`
+	Clusters []struct {
+		URL         string `yaml:"url"`
+		Insecure    bool   `yaml:"insecure,omitempty"`
+		TokenID     string `yaml:"token_id,omitempty"`
+		TokenSecret string `yaml:"token_secret,omitempty"`
+		Region      string `yaml:"region,omitempty"`
+	} `yaml:"clusters,omitempty"`
 }
 
 func readCloudConfig(config io.Reader) (cloudConfig, error) {
@@ -22,7 +25,7 @@ func readCloudConfig(config io.Reader) (cloudConfig, error) {
 		}
 	}
 
-	klog.V(4).Infof("cloudConfig: %+v", cfg)
+	// klog.V(5).Infof("cloudConfig: %+v", cfg)
 
 	return cfg, nil
 }

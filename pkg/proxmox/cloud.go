@@ -1,3 +1,4 @@
+// Package proxmox is main CCM defenition.
 package proxmox
 
 import (
@@ -37,7 +38,7 @@ func init() {
 }
 
 func newCloud(config *cloudConfig) (cloudprovider.Interface, error) {
-	client, err := newClient(context.Background(), config)
+	client, err := newClient(config)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +62,14 @@ func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, 
 	ctx, cancel := context.WithCancel(context.Background())
 	c.ctx = ctx
 	c.stop = cancel
+
+	for _, px := range c.client.proxmox {
+		if _, err := px.client.GetVersion(); err != nil {
+			klog.Errorf("failed to initialized proxmox client on region %s: %v", px.region, err)
+
+			return
+		}
+	}
 
 	// Broadcast the upstream stop signal to all provider-level goroutines
 	// watching the provider's context for cancellation.

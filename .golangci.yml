@@ -124,8 +124,7 @@ linters-settings:
     max-complexity: 20
   gomoddirectives:
     replace-local: true
-    replace-allow-list:
-      - cloud.google.com/go
+    replace-allow-list: []
     retract-allow-no-explanation: false
     exclude-forbidden: true
 

@@ -1,0 +1,7 @@
+
+image:
+  repository: ghcr.io/sergelogvinov/proxmox-cloud-controller-manager
+  pullPolicy: Always
+  tag: edge
+
+logVerbosityLevel: 4
