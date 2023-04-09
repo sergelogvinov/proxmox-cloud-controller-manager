@@ -137,10 +137,14 @@ spec:
       app.kubernetes.io/instance: proxmox-cloud-controller-manager
   template:
     metadata:
+      annotations:
+        checksum/config: c69436cb1e16c36ff708b1003d3ca4c6ee6484d2524e2ba7d9b68f473acaa1ca
       labels:
         app.kubernetes.io/name: proxmox-cloud-controller-manager
         app.kubernetes.io/instance: proxmox-cloud-controller-manager
     spec:
+      enableServiceLinks: false
+      priorityClassName: system-cluster-critical
       serviceAccountName: proxmox-cloud-controller-manager
       securityContext:
         fsGroup: 10258
@@ -157,7 +161,7 @@ spec:
               - ALL
             seccompProfile:
               type: RuntimeDefault
-          image: "ghcr.io/sergelogvinov/proxmox-cloud-controller-manager:811670e"
+          image: "ghcr.io/sergelogvinov/proxmox-cloud-controller-manager:edge"
           imagePullPolicy: IfNotPresent
           command: ["/proxmox-cloud-controller-manager"]
           args:
