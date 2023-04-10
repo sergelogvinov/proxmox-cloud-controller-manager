@@ -1,16 +1,18 @@
 # Kubernetes cloud controller manager for Proxmox
 
-In my opinion, Proxmox is like a manual way of creating a cloud.
-There isn't much automation built into it.
+To me, it seems like Proxmox is a bit old-fashioned when it comes to creating virtual machines.
+It doesn't have a lot of automation built-in, so you have to do a lot of things manually.
 Proxmox is a good option if you have a static infrastructure or don't create new virtual machines very often.
-I personally use terraform to launch kubernetes nodes, and when I scale down, I need to delete the node resource in kubernetes.
-That's why I created the CCM (Cloud Controller Manager).
-Originally, it was designed to work with [TalosCCM](https://github.com/siderolabs/talos-cloud-controller-manager), but it was not difficult to make it a standalone solution.
+
+I use Terraform to launch my Kubernetes nodes.
+However, when I need to scale down the cluster, I have to manually delete the corresponding node resource in Kubernetes.
+That's why I created the CCM (Cloud Controller Manager) for Proxmox.
+Originally, it was designed to work with [Talos CCM](https://github.com/siderolabs/talos-cloud-controller-manager), but it was not difficult to make it as standalone solution.
 
 The CCM does a few things: it initialises new nodes, applies common labels to them, and removes them when they're deleted. It also supports multiple clusters, meaning you can have one kubernetes cluster across multiple Proxmox clusters.
 
 The basic definitions:
-* kubernetes `region` is a Proxmox cluster
+* kubernetes `region` is a Proxmox cluster `clusters[].region`
 * kubernetes `zone` is a hypervisor host machine name
 
 This makes it possible for me to use pods affinity/anti-affinity.
