@@ -9,6 +9,8 @@ import (
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 
+	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+
 	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
 	cloudproviderapi "k8s.io/cloud-provider/api"
@@ -16,10 +18,10 @@ import (
 )
 
 type instances struct {
-	c *client
+	c *cluster.Client
 }
 
-func newInstances(client *client) *instances {
+func newInstances(client *cluster.Client) *instances {
 	return &instances{
 		c: client,
 	}
@@ -71,7 +73,7 @@ func (i *instances) InstanceShutdown(_ context.Context, node *v1.Node) (bool, er
 		return false, err
 	}
 
-	vmState, err := px.client.GetVmState(vmRef)
+	vmState, err := px.GetVmState(vmRef)
 	if err != nil {
 		return false, err
 	}
@@ -93,22 +95,16 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 		var (
 			vmRef  *pxapi.VmRef
 			region string
+			err    error
 		)
 
 		providerID := node.Spec.ProviderID
 		if providerID == "" {
 			klog.V(4).Infof("instances.InstanceMetadata() - trying to find providerID for node %s", node.Name)
 
-			for _, px := range i.c.proxmox {
-				vm, err := px.client.GetVmRefByName(node.Name)
-				if err != nil {
-					continue
-				}
-
-				vmRef = vm
-				region = px.region
-
-				break
+			vmRef, region, err = i.c.FindVMByName(node.Name)
+			if err != nil {
+				return nil, fmt.Errorf("instances.InstanceMetadata() - failed to find instance by name %s: %v, skipped", node.Name, err)
 			}
 		} else if !strings.HasPrefix(node.Spec.ProviderID, ProviderName) {
 			klog.V(4).Infof("instances.InstanceMetadata() node %s has foreign providerID: %s, skipped", node.Name, node.Spec.ProviderID)
@@ -117,8 +113,6 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 		}
 
 		if vmRef == nil {
-			var err error
-
 			vmRef, region, err = i.getInstance(node)
 			if err != nil {
 				return nil, err
@@ -128,15 +122,13 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 		addresses := []v1.NodeAddress{{Type: v1.NodeInternalIP, Address: providedIP}}
 		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeHostName, Address: node.Name})
 
-		providerID = fmt.Sprintf("%s://%s/%d", ProviderName, region, vmRef.VmId())
-
 		instanceType, err := i.getInstanceType(vmRef, region)
 		if err != nil {
 			instanceType = vmRef.GetVmType()
 		}
 
 		return &cloudprovider.InstanceMetadata{
-			ProviderID:    providerID,
+			ProviderID:    i.getProviderID(region, vmRef),
 			NodeAddresses: addresses,
 			InstanceType:  instanceType,
 			Zone:          vmRef.Node(),
@@ -147,6 +139,10 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 	return &cloudprovider.InstanceMetadata{}, nil
 }
 
+func (i *instances) getProviderID(region string, vmr *pxapi.VmRef) string {
+	return fmt.Sprintf("%s://%s/%d", ProviderName, region, vmr.VmId())
+}
+
 func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
 	if !strings.HasPrefix(node.Spec.ProviderID, ProviderName) {
 		klog.V(4).Infof("instances.getInstance() node %s has foreign providerID: %s, skipped", node.Name, node.Spec.ProviderID)
@@ -154,19 +150,17 @@ func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
 		return nil, "", fmt.Errorf("node %s has foreign providerID: %s", node.Name, node.Spec.ProviderID)
 	}
 
-	vmid, region, err := i.parseProviderID(node.Spec.ProviderID)
+	vm, region, err := i.parseProviderID(node.Spec.ProviderID)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("instances.getInstance() error: %v", err)
 	}
-
-	vmRef := pxapi.NewVmRef(vmid)
 
 	px, err := i.c.GetProxmoxCluster(region)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("instances.getInstance() error: %v", err)
 	}
 
-	vmInfo, err := px.client.GetVmInfo(vmRef)
+	vmInfo, err := px.GetVmInfo(vm)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return nil, "", cloudprovider.InstanceNotFound
@@ -177,7 +171,7 @@ func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
 
 	klog.V(5).Infof("instances.getInstance() vmInfo %+v", vmInfo)
 
-	return vmRef, region, nil
+	return vm, region, nil
 }
 
 func (i *instances) getInstanceType(vmRef *pxapi.VmRef, region string) (string, error) {
@@ -186,7 +180,7 @@ func (i *instances) getInstanceType(vmRef *pxapi.VmRef, region string) (string, 
 		return "", err
 	}
 
-	vmInfo, err := px.client.GetVmInfo(vmRef)
+	vmInfo, err := px.GetVmInfo(vmRef)
 	if err != nil {
 		return "", err
 	}
@@ -198,16 +192,16 @@ func (i *instances) getInstanceType(vmRef *pxapi.VmRef, region string) (string, 
 
 var providerIDRegexp = regexp.MustCompile(`^` + ProviderName + `://([^/]*)/([^/]+)$`)
 
-func (i *instances) parseProviderID(providerID string) (int, string, error) {
+func (i *instances) parseProviderID(providerID string) (*pxapi.VmRef, string, error) {
 	matches := providerIDRegexp.FindStringSubmatch(providerID)
 	if len(matches) != 3 {
-		return 0, "", fmt.Errorf("ProviderID \"%s\" didn't match expected format \"%s://region/InstanceID\"", providerID, ProviderName)
+		return nil, "", fmt.Errorf("ProviderID \"%s\" didn't match expected format \"%s://region/InstanceID\"", providerID, ProviderName)
 	}
 
 	vmID, err := strconv.Atoi(matches[2])
 	if err != nil {
-		return 0, "", err
+		return nil, "", err
 	}
 
-	return vmID, matches[1], nil
+	return pxapi.NewVmRef(vmID), matches[1], nil
 }

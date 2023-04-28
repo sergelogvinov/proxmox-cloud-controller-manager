@@ -48,14 +48,18 @@ help: ## This help menu.
 build-all-archs:
 	@for arch in $(ARCHS); do $(MAKE) ARCH=$${arch} build ; done
 
+.PHONY: clean
+clean: ## Clean
+	rm -rf bin
+
 .PHONY: build
 build: ## Build
 	CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) go build $(GO_LDFLAGS) \
-		-o proxmox-cloud-controller-manager-$(ARCH) ./cmd/proxmox-cloud-controller-manager
+		-o bin/proxmox-cloud-controller-manager-$(ARCH) ./cmd/proxmox-cloud-controller-manager
 
 .PHONY: run
 run: build
-	./proxmox-cloud-controller-manager-$(ARCH) --v=5 --kubeconfig=kubeconfig --cloud-config=proxmox-config.yaml --controllers=cloud-node,cloud-node-lifecycle \
+	./bin/proxmox-cloud-controller-manager-$(ARCH) --v=5 --kubeconfig=kubeconfig --cloud-config=proxmox-config.yaml --controllers=cloud-node,cloud-node-lifecycle \
 		--use-service-account-credentials --leader-elect=false --bind-address=127.0.0.1
 
 .PHONY: lint

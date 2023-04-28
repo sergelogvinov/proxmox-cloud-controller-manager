@@ -5,6 +5,9 @@ import (
 	"context"
 	"io"
 
+	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+
+	clientkubernetes "k8s.io/client-go/kubernetes"
 	cloudprovider "k8s.io/cloud-provider"
 	"k8s.io/klog/v2"
 )
@@ -17,7 +20,8 @@ const (
 )
 
 type cloud struct {
-	client      *client
+	client      *cluster.Client
+	kclient     clientkubernetes.Interface
 	instancesV2 cloudprovider.InstancesV2
 
 	ctx  context.Context //nolint:containedctx
@@ -26,7 +30,7 @@ type cloud struct {
 
 func init() {
 	cloudprovider.RegisterCloudProvider(ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
-		cfg, err := readCloudConfig(config)
+		cfg, err := cluster.ReadCloudConfig(config)
 		if err != nil {
 			klog.Errorf("failed to read config: %v", err)
 
@@ -37,8 +41,8 @@ func init() {
 	})
 }
 
-func newCloud(config *cloudConfig) (cloudprovider.Interface, error) {
-	client, err := newClient(config)
+func newCloud(config *cluster.ClustersConfig) (cloudprovider.Interface, error) {
+	client, err := cluster.NewClient(config)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +59,7 @@ func newCloud(config *cloudConfig) (cloudprovider.Interface, error) {
 // to perform housekeeping or run custom controllers specific to the cloud provider.
 // Any tasks started here should be cleaned up when the stop channel closes.
 func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, stop <-chan struct{}) {
-	c.client.kclient = clientBuilder.ClientOrDie(ServiceAccountName)
+	c.kclient = clientBuilder.ClientOrDie(ServiceAccountName)
 
 	klog.Infof("clientset initialized")
 
@@ -63,12 +67,9 @@ func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, 
 	c.ctx = ctx
 	c.stop = cancel
 
-	for _, px := range c.client.proxmox {
-		if _, err := px.client.GetVersion(); err != nil {
-			klog.Errorf("failed to initialized proxmox client on region %s: %v", px.region, err)
-
-			return
-		}
+	err := c.client.CheckClusters()
+	if err != nil {
+		klog.Errorf("failed to initialized proxmox client: %v", err)
 	}
 
 	// Broadcast the upstream stop signal to all provider-level goroutines

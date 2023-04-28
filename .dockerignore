@@ -3,11 +3,11 @@
 .git/
 **/.gitignore
 #
+bin/
 charts/
 docs/
 hack/
 Dockerfile
-/proxmox-cloud-controller-manager*
 #
 # other
 *.md

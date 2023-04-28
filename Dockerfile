@@ -19,6 +19,6 @@ FROM --platform=${TARGETARCH} gcr.io/distroless/static-debian11:nonroot AS relea
 LABEL org.opencontainers.image.source https://github.com/sergelogvinov/proxmox-cloud-controller-manager
 
 ARG TARGETARCH
-COPY --from=builder /src/proxmox-cloud-controller-manager-${TARGETARCH} /proxmox-cloud-controller-manager
+COPY --from=builder /src/bin/proxmox-cloud-controller-manager-${TARGETARCH} /proxmox-cloud-controller-manager
 
 ENTRYPOINT ["/proxmox-cloud-controller-manager"]
