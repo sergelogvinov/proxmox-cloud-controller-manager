@@ -136,6 +136,8 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 		}, nil
 	}
 
+	klog.Infof("instances.InstanceMetadata() is kubelet has --cloud-provider=external on the node %s?", node.Name)
+
 	return &cloudprovider.InstanceMetadata{}, nil
 }
 

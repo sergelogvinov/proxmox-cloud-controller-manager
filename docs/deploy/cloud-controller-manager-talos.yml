@@ -162,13 +162,13 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           image: "ghcr.io/sergelogvinov/proxmox-cloud-controller-manager:edge"
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           command: ["/proxmox-cloud-controller-manager"]
           args:
             - --v=4
             - --cloud-provider=proxmox
             - --cloud-config=/etc/proxmox/config.yaml
-            - --controllers=cloud-node,cloud-node-lifecycle
+            - --controllers=cloud-node-lifecycle
             - --leader-elect-resource-name=cloud-controller-manager-proxmox
             - --use-service-account-credentials
             - --secure-port=10258
