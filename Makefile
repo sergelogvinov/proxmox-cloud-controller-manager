@@ -85,7 +85,6 @@ helm-unit: ## Helm Unit Tests
 docs:
 	helm template -n kube-system proxmox-cloud-controller-manager \
 		-f charts/proxmox-cloud-controller-manager/values.edge.yaml \
-		--set-string image.tag=$(TAG) \
 		charts/proxmox-cloud-controller-manager > docs/deploy/cloud-controller-manager.yml
 	helm template -n kube-system proxmox-cloud-controller-manager \
 		-f charts/proxmox-cloud-controller-manager/values.talos.yaml \
