@@ -24,6 +24,4 @@ jobs:
       - name: Run helm chart linter
         run: ct --config hack/ct.yml lint
       - name: Run helm template
-        run: |
-          helm template -n kube-system -f charts/talos-cloud-controller-manager/values-tests.yaml \
-            ccm charts/talos-cloud-controller-manager > /dev/null
+        run: make helm-unit
