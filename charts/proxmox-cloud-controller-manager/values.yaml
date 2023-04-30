@@ -5,9 +5,11 @@
 replicaCount: 1
 
 image:
+  # -- Proxmox CCM image.
   repository: ghcr.io/sergelogvinov/proxmox-cloud-controller-manager
+  # -- Always or IfNotPresent
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
+  # -- Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
 imagePullSecrets: []
@@ -31,6 +33,12 @@ enabledControllers:
 # for description of individual verbosity levels.
 logVerbosityLevel: 2
 
+# -- Proxmox cluster config stored in secrets.
+existingConfigSecret: ~
+# -- Proxmox cluster config stored in secrets key.
+existingConfigSecretKey: config.yaml
+
+# -- Proxmox cluster config.
 config:
   clusters: []
   #   - url: https://cluster-api-1.exmple.com:8006/api2/json
@@ -76,6 +84,8 @@ securityContext:
   seccompProfile:
     type: RuntimeDefault
 
+# -- Resizer resource requests and limits.
+# ref: https://kubernetes.io/docs/user-guide/compute-resources/
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little

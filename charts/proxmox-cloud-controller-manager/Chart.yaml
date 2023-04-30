@@ -10,6 +10,7 @@ keywords:
 - ccm
 maintainers:
 - name: sergelogvinov
+  url: https://github.com/sergelogvinov
 
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.

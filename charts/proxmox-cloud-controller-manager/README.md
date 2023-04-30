@@ -10,38 +10,72 @@ A Helm chart for Kubernetes
 
 | Name | Email | Url |
 | ---- | ------ | --- |
-| sergelogvinov |  |  |
+| sergelogvinov |  | <https://github.com/sergelogvinov> |
 
 ## Source Code
 
 * <https://github.com/sergelogvinov/proxmox-cloud-controller-manager>
 
+Example:
+
+```yaml
+# proxmox-ccm.yaml
+
+config:
+  clusters:
+    - url: https://cluster-api-1.exmple.com:8006/api2/json
+      insecure: false
+      token_id: "kubernetes@pve!csi"
+      token_secret: "key"
+      region: cluster-1
+
+enabledControllers:
+  # Remove `cloud-node` if you use it with Talos CCM
+  - cloud-node
+  - cloud-node-lifecycle
+
+# Deploy CCM only on control-plane nodes
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    effect: NoSchedule
+```
+
+Deploy chart:
+
+```shell
+helm upgrade -i --namespace=kube-system -f proxmox-ccm.yaml \
+		proxmox-cloud-controller-manager charts/proxmox-cloud-controller-manager
+```
+
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| affinity | object | `{}` | Affinity for data pods assignment. ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity |
-| config.clusters | list | `[]` |  |
-| enabledControllers | list | `["cloud-node","cloud-node-lifecycle"]` | List of controllers should be enabled. Use '*' to enable all controllers. Support only `cloud-node,cloud-node-lifecycle` controllers. |
-| extraArgs | list | `[]` | Any extra arguments for talos-cloud-controller-manager |
-| fullnameOverride | string | `""` |  |
-| image.pullPolicy | string | `"IfNotPresent"` |  |
-| image.repository | string | `"ghcr.io/sergelogvinov/proxmox-cloud-controller-manager"` |  |
-| image.tag | string | `""` |  |
+| replicaCount | int | `1` |  |
+| image.repository | string | `"ghcr.io/sergelogvinov/proxmox-cloud-controller-manager"` | Proxmox CCM image. |
+| image.pullPolicy | string | `"IfNotPresent"` | Always or IfNotPresent |
+| image.tag | string | `""` | Overrides the image tag whose default is the chart appVersion. |
 | imagePullSecrets | list | `[]` |  |
-| logVerbosityLevel | int | `2` | Log verbosity level. See https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md for description of individual verbosity levels. |
 | nameOverride | string | `""` |  |
-| nodeSelector | object | `{}` | Node labels for data pods assignment. ref: https://kubernetes.io/docs/user-guide/node-selection/ |
+| fullnameOverride | string | `""` |  |
+| extraArgs | list | `[]` | Any extra arguments for talos-cloud-controller-manager |
+| enabledControllers | list | `["cloud-node","cloud-node-lifecycle"]` | List of controllers should be enabled. Use '*' to enable all controllers. Support only `cloud-node,cloud-node-lifecycle` controllers. |
+| logVerbosityLevel | int | `2` | Log verbosity level. See https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md for description of individual verbosity levels. |
+| existingConfigSecret | string | `nil` | Proxmox cluster config stored in secrets. |
+| existingConfigSecretKey | string | `"config.yaml"` | Proxmox cluster config stored in secrets key. |
+| config | object | `{"clusters":[]}` | Proxmox cluster config. |
+| serviceAccount | object | `{"annotations":{},"create":true,"name":""}` | Pods Service Account. ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/ |
+| priorityClassName | string | `"system-cluster-critical"` | CCM pods' priorityClassName. |
 | podAnnotations | object | `{}` | Annotations for data pods. ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/ |
 | podSecurityContext | object | `{"fsGroup":10258,"fsGroupChangePolicy":"OnRootMismatch","runAsGroup":10258,"runAsNonRoot":true,"runAsUser":10258}` | Pods Security Context. ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod |
-| priorityClassName | string | `"system-cluster-critical"` | CCM pods' priorityClassName. |
-| replicaCount | int | `1` |  |
-| resources.requests.cpu | string | `"10m"` |  |
-| resources.requests.memory | string | `"32Mi"` |  |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"seccompProfile":{"type":"RuntimeDefault"}}` | Container Security Context. ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod |
-| serviceAccount | object | `{"annotations":{},"create":true,"name":""}` | Pods Service Account. ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/ |
-| tolerations | list | `[{"effect":"NoSchedule","key":"node-role.kubernetes.io/control-plane","operator":"Exists"},{"effect":"NoSchedule","key":"node.cloudprovider.kubernetes.io/uninitialized","operator":"Exists"}]` | Tolerations for data pods assignment. ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/ |
+| resources | object | `{"requests":{"cpu":"10m","memory":"32Mi"}}` | Resizer resource requests and limits. ref: https://kubernetes.io/docs/user-guide/compute-resources/ |
 | updateStrategy | object | `{"rollingUpdate":{"maxUnavailable":1},"type":"RollingUpdate"}` | Deployment update stategy type. ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment |
+| nodeSelector | object | `{}` | Node labels for data pods assignment. ref: https://kubernetes.io/docs/user-guide/node-selection/ |
+| tolerations | list | `[{"effect":"NoSchedule","key":"node-role.kubernetes.io/control-plane","operator":"Exists"},{"effect":"NoSchedule","key":"node.cloudprovider.kubernetes.io/uninitialized","operator":"Exists"}]` | Tolerations for data pods assignment. ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/ |
+| affinity | object | `{}` | Affinity for data pods assignment. ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.11.0](https://github.com/norwoodj/helm-docs/releases/v1.11.0)

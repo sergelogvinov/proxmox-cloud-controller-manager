@@ -80,7 +80,17 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+        {{- if .Values.existingConfigSecret }}
+        - name: cloud-config
+          secret:
+            secretName: {{ .Values.existingConfigSecret }}
+            items:
+              - key: {{ .Values.existingConfigSecretKey }}
+                path: config.yaml
+            defaultMode: 416
+        {{- else }}
         - name: cloud-config
           secret:
             secretName: {{ include "proxmox-cloud-controller-manager.fullname" . }}
-            defaultMode: 416 # 0640
+            defaultMode: 416
+        {{- end }}

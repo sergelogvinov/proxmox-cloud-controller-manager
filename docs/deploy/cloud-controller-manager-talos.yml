@@ -12,21 +12,6 @@ metadata:
     app.kubernetes.io/managed-by: Helm
   namespace: kube-system
 ---
-# Source: proxmox-cloud-controller-manager/templates/secrets.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: proxmox-cloud-controller-manager
-  labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.1.2
-    app.kubernetes.io/name: proxmox-cloud-controller-manager
-    app.kubernetes.io/instance: proxmox-cloud-controller-manager
-    app.kubernetes.io/version: "v0.0.1"
-    app.kubernetes.io/managed-by: Helm
-  namespace: kube-system
-data:
-  config.yaml: "Y2x1c3RlcnM6IFtd"
----
 # Source: proxmox-cloud-controller-manager/templates/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -201,4 +186,4 @@ spec:
         - name: cloud-config
           secret:
             secretName: proxmox-cloud-controller-manager
-            defaultMode: 416 # 0640
+            defaultMode: 416

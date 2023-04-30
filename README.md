@@ -74,26 +74,10 @@ pveum user token add kubernetes@pve ccm -privsep 0
 
 ## Deploy CCM
 
-### Method 1: kubectl
-
-Deploy Proxmox CCM
-
-```shell
-kubectl apply -f https://raw.githubusercontent.com/sergelogvinov/proxmox-cloud-controller-manager/main/docs/deploy/cloud-controller-manager.yml
-```
-
-Change the proxmox credentials
-
-```shell
-kubectl -n kube-system edit secrets proxmox-cloud-controller-manager
-```
-
-### Method 2: helm chart
-
-Set the proxmox credentials
+Create the proxmox credentials
 
 ```yaml
-# clusters.yaml
+# config.yaml
 config:
   clusters:
     - url: https://cluster-api-1.exmple.com:8006/api2/json
@@ -103,8 +87,52 @@ config:
       region: cluster-1
 ```
 
+Upload it to the kubernetes:
+
+```shell
+kubectl -n kube-system create secret proxmox-cloud-controller-manager --from-file=config.yaml
+```
+
+### Method 1: kubectl
+
+Deploy Proxmox CCM with `cloud-node,cloud-node-lifecycle` controllers
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/sergelogvinov/proxmox-cloud-controller-manager/main/docs/deploy/cloud-controller-manager.yml
+```
+
+Deploy Proxmox CCM with `cloud-node-lifecycle` controller (for Talos)
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/sergelogvinov/proxmox-cloud-controller-manager/main/docs/deploy/cloud-controller-manager-talos.yml
+```
+
+### Method 2: helm chart
+
 Deploy Proxmox CCM
 
 ```shell
-helm upgrade -i --namespace=kube-system -f clusters.yaml proxmox-cloud-controller-manager charts/proxmox-cloud-controller-manager
+helm upgrade -i --namespace=kube-system -f proxmox-ccm.yaml \
+		proxmox-cloud-controller-manager charts/proxmox-cloud-controller-manager
 ```
+
+More options can find [here](charts/proxmox-cloud-controller-manager)
+
+## Contributing
+
+Contributions are welcomed and appreciated!
+See [Contributing](CONTRIBUTING.md) for our guidelines.
+
+## License
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
