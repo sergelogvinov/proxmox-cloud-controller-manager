@@ -1,3 +1,19 @@
+/*
+Copyright 2023 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package proxmox
 
 import (
@@ -141,10 +157,6 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 	return &cloudprovider.InstanceMetadata{}, nil
 }
 
-func (i *instances) getProviderID(region string, vmr *pxapi.VmRef) string {
-	return fmt.Sprintf("%s://%s/%d", ProviderName, region, vmr.VmId())
-}
-
 func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
 	if !strings.HasPrefix(node.Spec.ProviderID, ProviderName) {
 		klog.V(4).Infof("instances.getInstance() node %s has foreign providerID: %s, skipped", node.Name, node.Spec.ProviderID)
@@ -194,15 +206,23 @@ func (i *instances) getInstanceType(vmRef *pxapi.VmRef, region string) (string, 
 
 var providerIDRegexp = regexp.MustCompile(`^` + ProviderName + `://([^/]*)/([^/]+)$`)
 
+func (i *instances) getProviderID(region string, vmr *pxapi.VmRef) string {
+	return fmt.Sprintf("%s://%s/%d", ProviderName, region, vmr.VmId())
+}
+
 func (i *instances) parseProviderID(providerID string) (*pxapi.VmRef, string, error) {
+	if !strings.HasPrefix(providerID, ProviderName) {
+		return nil, "", fmt.Errorf("foreign providerID or empty \"%s\"", providerID)
+	}
+
 	matches := providerIDRegexp.FindStringSubmatch(providerID)
 	if len(matches) != 3 {
-		return nil, "", fmt.Errorf("ProviderID \"%s\" didn't match expected format \"%s://region/InstanceID\"", providerID, ProviderName)
+		return nil, "", fmt.Errorf("providerID \"%s\" didn't match expected format \"%s://region/InstanceID\"", providerID, ProviderName)
 	}
 
 	vmID, err := strconv.Atoi(matches[2])
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("providerID \"%s\" didn't match expected format \"%s://region/InstanceID\"", providerID, ProviderName)
 	}
 
 	return pxapi.NewVmRef(vmID), matches[1], nil
