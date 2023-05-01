@@ -20,19 +20,21 @@ package cluster
 import (
 	"crypto/tls"
 	"fmt"
+	"net/http"
 	"os"
+	"strings"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 )
 
-// Client is a Proxmox client.
-type Client struct {
+// Cluster is a Proxmox client.
+type Cluster struct {
 	config  *ClustersConfig
 	proxmox map[string]*pxapi.Client
 }
 
-// NewClient creates a new Proxmox client.
-func NewClient(config *ClustersConfig) (*Client, error) {
+// NewCluster creates a new Proxmox cluster client.
+func NewCluster(config *ClustersConfig, hclient *http.Client) (*Cluster, error) {
 	clusters := len(config.Clusters)
 	if clusters > 0 {
 		proxmox := make(map[string]*pxapi.Client, clusters)
@@ -43,7 +45,7 @@ func NewClient(config *ClustersConfig) (*Client, error) {
 				tlsconf = nil
 			}
 
-			client, err := pxapi.NewClient(cfg.URL, nil, os.Getenv("PM_HTTP_HEADERS"), tlsconf, "", 600)
+			client, err := pxapi.NewClient(cfg.URL, hclient, os.Getenv("PM_HTTP_HEADERS"), tlsconf, "", 600)
 			if err != nil {
 				return nil, err
 			}
@@ -53,7 +55,7 @@ func NewClient(config *ClustersConfig) (*Client, error) {
 			proxmox[cfg.Region] = client
 		}
 
-		return &Client{
+		return &Cluster{
 			config:  config,
 			proxmox: proxmox,
 		}, nil
@@ -63,7 +65,7 @@ func NewClient(config *ClustersConfig) (*Client, error) {
 }
 
 // CheckClusters checks if the Proxmox connection is working.
-func (c *Client) CheckClusters() error {
+func (c *Cluster) CheckClusters() error {
 	for region, client := range c.proxmox {
 		if _, err := client.GetVersion(); err != nil {
 			return fmt.Errorf("failed to initialized proxmox client in region %s, error: %v", region, err)
@@ -74,7 +76,7 @@ func (c *Client) CheckClusters() error {
 }
 
 // GetProxmoxCluster returns a Proxmox cluster client in a given region.
-func (c *Client) GetProxmoxCluster(region string) (*pxapi.Client, error) {
+func (c *Cluster) GetProxmoxCluster(region string) (*pxapi.Client, error) {
 	if c.proxmox[region] != nil {
 		return c.proxmox[region], nil
 	}
@@ -83,15 +85,19 @@ func (c *Client) GetProxmoxCluster(region string) (*pxapi.Client, error) {
 }
 
 // FindVMByName find a VM by name in all Proxmox clusters.
-func (c *Client) FindVMByName(name string) (*pxapi.VmRef, string, error) {
+func (c *Cluster) FindVMByName(name string) (*pxapi.VmRef, string, error) {
 	for region, px := range c.proxmox {
 		vmr, err := px.GetVmRefByName(name)
 		if err != nil {
-			continue
+			if strings.Contains(err.Error(), "not found") {
+				continue
+			}
+
+			return nil, "", err
 		}
 
 		return vmr, region, nil
 	}
 
-	return nil, "", fmt.Errorf("VM %s not found", name)
+	return nil, "", fmt.Errorf("vm '%s' not found", name)
 }

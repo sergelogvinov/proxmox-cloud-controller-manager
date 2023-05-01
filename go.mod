@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/Telmate/proxmox-api-go v0.0.0-20230329163449-4d08b16c14e0
+	github.com/jarcoal/httpmock v1.3.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/yaml.v3 v3.0.1
@@ -12,7 +13,7 @@ require (
 	k8s.io/client-go v0.27.1
 	k8s.io/cloud-provider v0.27.1
 	k8s.io/component-base v0.27.1
-	k8s.io/klog/v2 v2.90.1
+	k8s.io/klog/v2 v2.100.1
 )
 
 require (
