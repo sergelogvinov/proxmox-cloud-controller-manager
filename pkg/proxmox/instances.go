@@ -34,10 +34,10 @@ import (
 )
 
 type instances struct {
-	c *cluster.Client
+	c *cluster.Cluster
 }
 
-func newInstances(client *cluster.Client) *instances {
+func newInstances(client *cluster.Cluster) *instances {
 	return &instances{
 		c: client,
 	}
@@ -79,17 +79,21 @@ func (i *instances) InstanceShutdown(_ context.Context, node *v1.Node) (bool, er
 		return false, nil
 	}
 
-	vmRef, region, err := i.getInstance(node)
+	vmr, region, err := i.parseProviderID(node.Spec.ProviderID)
 	if err != nil {
-		return false, err
+		klog.Warningf("instances.InstanceShutdown() failed to parse providerID %s: %v", node.Spec.ProviderID, err)
+
+		return false, nil
 	}
 
 	px, err := i.c.GetProxmoxCluster(region)
 	if err != nil {
-		return false, err
+		klog.Warningf("instances.InstanceShutdown() failed to get Proxmox cluster: %v", err)
+
+		return false, nil
 	}
 
-	vmState, err := px.GetVmState(vmRef)
+	vmState, err := px.GetVmState(vmr)
 	if err != nil {
 		return false, err
 	}
@@ -158,12 +162,6 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 }
 
 func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
-	if !strings.HasPrefix(node.Spec.ProviderID, ProviderName) {
-		klog.V(4).Infof("instances.getInstance() node %s has foreign providerID: %s, skipped", node.Name, node.Spec.ProviderID)
-
-		return nil, "", fmt.Errorf("node %s has foreign providerID: %s", node.Name, node.Spec.ProviderID)
-	}
-
 	vm, region, err := i.parseProviderID(node.Spec.ProviderID)
 	if err != nil {
 		return nil, "", fmt.Errorf("instances.getInstance() error: %v", err)
@@ -181,6 +179,10 @@ func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
 		}
 
 		return nil, "", err
+	}
+
+	if vmInfo["name"].(string) != node.Name {
+		return nil, "", fmt.Errorf("instances.getInstance() vm.name(%s) != node.name(%s)", vmInfo["name"].(string), node.Name)
 	}
 
 	klog.V(5).Infof("instances.getInstance() vmInfo %+v", vmInfo)

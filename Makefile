@@ -7,6 +7,11 @@ PUSH ?= false
 
 SHA ?= $(shell git describe --match=none --always --abbrev=8 --dirty)
 TAG ?= $(shell git describe --tag --always --match v[0-9]\*)
+ifneq ($(TAG),edge)
+GO_LDFLAGS ?= -ldflags '-X k8s.io/component-base/version.gitVersion=$(TAG)'
+else
+GO_LDFLAGS ?= -ldflags '-X k8s.io/component-base/version.gitCommit=$(SHA)'
+endif
 
 OS ?= $(shell go env GOOS)
 ARCH ?= $(shell go env GOARCH)

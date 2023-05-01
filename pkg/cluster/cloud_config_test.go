@@ -14,29 +14,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+package cluster_test
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
 )
 
 func TestReadCloudConfig(t *testing.T) {
-	cfg, err := ReadCloudConfig(nil)
+	cfg, err := cluster.ReadCloudConfig(nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 
 	// Empty config
-	cfg, err = ReadCloudConfig(strings.NewReader(`
+	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
 clusters:
 `))
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 
 	// Wrong config
-	cfg, err = ReadCloudConfig(strings.NewReader(`
+	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
 clusters:
   test: false
 `))
@@ -45,7 +47,7 @@ clusters:
 	assert.NotNil(t, cfg)
 
 	// Valid config with one cluster
-	cfg, err = ReadCloudConfig(strings.NewReader(`
+	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
 clusters:
   - url: https://example.com
     insecure: false
@@ -59,12 +61,12 @@ clusters:
 }
 
 func TestReadCloudConfigFromFile(t *testing.T) {
-	cfg, err := ReadCloudConfigFromFile("testdata/cloud-config.yaml")
+	cfg, err := cluster.ReadCloudConfigFromFile("testdata/cloud-config.yaml")
 	assert.NotNil(t, err)
 	assert.EqualError(t, err, "error reading testdata/cloud-config.yaml: open testdata/cloud-config.yaml: no such file or directory")
 	assert.NotNil(t, cfg)
 
-	cfg, err = ReadCloudConfigFromFile("../../hack/proxmox-config.yaml")
+	cfg, err = cluster.ReadCloudConfigFromFile("../../hack/proxmox-config.yaml")
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 2, len(cfg.Clusters))

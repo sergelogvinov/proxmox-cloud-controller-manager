@@ -20,7 +20,7 @@ const (
 )
 
 type cloud struct {
-	client      *cluster.Client
+	client      *cluster.Cluster
 	kclient     clientkubernetes.Interface
 	instancesV2 cloudprovider.InstancesV2
 
@@ -42,7 +42,7 @@ func init() {
 }
 
 func newCloud(config *cluster.ClustersConfig) (cloudprovider.Interface, error) {
-	client, err := cluster.NewClient(config)
+	client, err := cluster.NewCluster(config, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, 
 
 	err := c.client.CheckClusters()
 	if err != nil {
-		klog.Errorf("failed to initialized proxmox client: %v", err)
+		klog.Errorf("failed to check proxmox cluster: %v", err)
 	}
 
 	// Broadcast the upstream stop signal to all provider-level goroutines
