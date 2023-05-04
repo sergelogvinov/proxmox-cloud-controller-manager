@@ -81,14 +81,14 @@ func (i *instances) InstanceShutdown(_ context.Context, node *v1.Node) (bool, er
 
 	vmr, region, err := i.parseProviderID(node.Spec.ProviderID)
 	if err != nil {
-		klog.Warningf("instances.InstanceShutdown() failed to parse providerID %s: %v", node.Spec.ProviderID, err)
+		klog.Errorf("instances.InstanceShutdown() failed to parse providerID %s: %v", node.Spec.ProviderID, err)
 
 		return false, nil
 	}
 
 	px, err := i.c.GetProxmoxCluster(region)
 	if err != nil {
-		klog.Warningf("instances.InstanceShutdown() failed to get Proxmox cluster: %v", err)
+		klog.Errorf("instances.InstanceShutdown() failed to get Proxmox cluster: %v", err)
 
 		return false, nil
 	}

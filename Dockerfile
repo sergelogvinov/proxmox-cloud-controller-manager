@@ -15,10 +15,11 @@ RUN make build-all-archs
 
 ########################################
 
-FROM --platform=${TARGETARCH} gcr.io/distroless/static-debian11:nonroot AS release
+FROM --platform=${TARGETARCH} scratch AS release
 LABEL org.opencontainers.image.source https://github.com/sergelogvinov/proxmox-cloud-controller-manager
 
+COPY --from=gcr.io/distroless/static-debian11:nonroot . .
 ARG TARGETARCH
-COPY --from=builder /src/bin/proxmox-cloud-controller-manager-${TARGETARCH} /proxmox-cloud-controller-manager
+COPY --from=builder /src/bin/proxmox-cloud-controller-manager-${TARGETARCH} /bin/proxmox-cloud-controller-manager
 
-ENTRYPOINT ["/proxmox-cloud-controller-manager"]
+ENTRYPOINT ["/bin/proxmox-cloud-controller-manager"]

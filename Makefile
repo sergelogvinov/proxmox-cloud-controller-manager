@@ -6,7 +6,7 @@ PLATFORM ?= linux/arm64,linux/amd64
 PUSH ?= false
 
 SHA ?= $(shell git describe --match=none --always --abbrev=8 --dirty)
-TAG ?= $(shell git describe --tag --always --match v[0-9]\*)
+TAG ?= $(shell git describe --tag --always --match='v*')
 ifneq ($(TAG),edge)
 GO_LDFLAGS ?= -ldflags '-X k8s.io/component-base/version.gitVersion=$(TAG)'
 else

@@ -90,10 +90,12 @@ clusters:
 			return httpmock.NewJsonResponse(200, map[string]interface{}{
 				"data": []interface{}{
 					map[string]interface{}{
-						"node": "pve-3",
-						"type": "qemu",
-						"vmid": 100,
-						"name": "cluster-2-node-1",
+						"node":   "pve-3",
+						"type":   "qemu",
+						"vmid":   100,
+						"name":   "cluster-2-node-1",
+						"maxcpu": 1,
+						"maxmem": 2 * 1024 * 1024 * 1024,
 					},
 				},
 			})
@@ -411,6 +413,33 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 				InstanceType: "4VCPU-10GB",
 				Region:       "cluster-1",
 				Zone:         "pve-1",
+			},
+		},
+		{
+			msg: "NodeExistsCluster2",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-2-node-1",
+					Annotations: map[string]string{
+						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+					},
+				},
+			},
+			expected: &cloudprovider.InstanceMetadata{
+				ProviderID: "proxmox://cluster-2/100",
+				NodeAddresses: []v1.NodeAddress{
+					{
+						Type:    v1.NodeInternalIP,
+						Address: "1.2.3.4",
+					},
+					{
+						Type:    v1.NodeHostName,
+						Address: "cluster-2-node-1",
+					},
+				},
+				InstanceType: "1VCPU-2GB",
+				Region:       "cluster-2",
+				Zone:         "pve-3",
 			},
 		},
 	}
