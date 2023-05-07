@@ -1,4 +1,18 @@
 
+<a name="v0.1.0"></a>
+## [v0.1.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.0.1...v0.1.0) (2023-05-07)
+
+Welcome to the v0.1.0 release of Kubernetes cloud controller manager for Proxmox!
+
+### Changelog
+
+* 2fb410d docs: update readme
+* fb96218 test: more tests
+* b776e54 test: mock proxmox api
+* 641509b doc: helm chart readme
+* 90b66dc test: basic test
+* bf10985 chore: release v0.0.1
+
 <a name="v0.0.1"></a>
 ## v0.0.1 (2023-04-29)
 
