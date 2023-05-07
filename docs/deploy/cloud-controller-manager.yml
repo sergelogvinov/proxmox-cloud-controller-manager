@@ -148,7 +148,6 @@ spec:
               type: RuntimeDefault
           image: "ghcr.io/sergelogvinov/proxmox-cloud-controller-manager:v0.0.1"
           imagePullPolicy: Always
-          command: ["/proxmox-cloud-controller-manager"]
           args:
             - --v=4
             - --cloud-provider=proxmox

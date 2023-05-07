@@ -78,19 +78,18 @@ Create the proxmox credentials
 
 ```yaml
 # config.yaml
-config:
-  clusters:
-    - url: https://cluster-api-1.exmple.com:8006/api2/json
-      insecure: false
-      token_id: "kubernetes@pve!ccm"
-      token_secret: "secret"
-      region: cluster-1
+clusters:
+  - url: https://cluster-api-1.exmple.com:8006/api2/json
+    insecure: false
+    token_id: "kubernetes@pve!ccm"
+    token_secret: "secret"
+    region: cluster-1
 ```
 
 Upload it to the kubernetes:
 
 ```shell
-kubectl -n kube-system create secret proxmox-cloud-controller-manager --from-file=config.yaml
+kubectl -n kube-system create secret generic proxmox-cloud-controller-manager --from-file=config.yaml
 ```
 
 ### Method 1: kubectl
@@ -109,6 +108,19 @@ kubectl apply -f https://raw.githubusercontent.com/sergelogvinov/proxmox-cloud-c
 
 ### Method 2: helm chart
 
+Create the config file:
+
+```yaml
+# proxmox-ccm.yaml
+config:
+  clusters:
+    - url: https://cluster-api-1.exmple.com:8006/api2/json
+      insecure: false
+      token_id: "kubernetes@pve!ccm"
+      token_secret: "secret"
+      region: cluster-1
+```
+
 Deploy Proxmox CCM
 
 ```shell
@@ -116,7 +128,7 @@ helm upgrade -i --namespace=kube-system -f proxmox-ccm.yaml \
 		proxmox-cloud-controller-manager charts/proxmox-cloud-controller-manager
 ```
 
-More options can find [here](charts/proxmox-cloud-controller-manager)
+More options you can find [here](charts/proxmox-cloud-controller-manager)
 
 ## Contributing
 
