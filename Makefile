@@ -5,13 +5,12 @@ IMAGE ?= $(REGISTRY)/$(USERNAME)/$(PROJECT)
 PLATFORM ?= linux/arm64,linux/amd64
 PUSH ?= false
 
+VERSION ?= $(shell git describe --dirty --tag --match='v*')
 SHA ?= $(shell git describe --match=none --always --abbrev=8 --dirty)
-TAG ?= $(shell git describe --tag --always --match='v*')
-ifneq ($(TAG),edge)
-GO_LDFLAGS ?= -ldflags '-X k8s.io/component-base/version.gitVersion=$(TAG)'
-else
-GO_LDFLAGS ?= -ldflags '-X k8s.io/component-base/version.gitCommit=$(SHA)'
-endif
+TAG ?= $(VERSION)
+
+GO_LDFLAGS := -s -w
+GO_LDFLAGS += -X k8s.io/component-base/version.gitVersion=$(VERSION)
 
 OS ?= $(shell go env GOOS)
 ARCH ?= $(shell go env GOARCH)
@@ -62,7 +61,7 @@ clean: ## Clean
 
 .PHONY: build
 build: ## Build
-	CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) go build $(GO_LDFLAGS) \
+	CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) go build -ldflags "$(GO_LDFLAGS)" \
 		-o bin/proxmox-cloud-controller-manager-$(ARCH) ./cmd/proxmox-cloud-controller-manager
 
 .PHONY: run
@@ -116,8 +115,9 @@ docker-init:
 
 .PHONY: images
 images: ## Build images
-	@docker buildx build $(BUILD_ARGS) \
-		--build-arg TAG=$(TAG) \
-		--build-arg SHA=$(SHA) \
+	docker buildx build $(BUILD_ARGS) \
+		--build-arg VERSION="$(VERSION)" \
+		--build-arg TAG="$(TAG)" \
+		--build-arg SHA="$(SHA)" \
 		-t $(IMAGE):$(TAG) \
 		-f Dockerfile .

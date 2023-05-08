@@ -10,7 +10,9 @@ COPY go.mod go.sum /src
 RUN go mod download && go mod verify
 
 COPY . .
+ARG VERSION
 ARG TAG
+ARG SHA
 RUN make build-all-archs
 
 ########################################
