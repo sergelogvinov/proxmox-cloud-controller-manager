@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	yaml "gopkg.in/yaml.v3"
 )
@@ -43,6 +44,24 @@ func ReadCloudConfig(config io.Reader) (ClustersConfig, error) {
 	if config != nil {
 		if err := yaml.NewDecoder(config).Decode(&cfg); err != nil {
 			return ClustersConfig{}, err
+		}
+	}
+
+	for idx, c := range cfg.Clusters {
+		if c.TokenID == "" {
+			return ClustersConfig{}, fmt.Errorf("cluster #%d: token_id is required", idx+1)
+		}
+
+		if c.TokenSecret == "" {
+			return ClustersConfig{}, fmt.Errorf("cluster #%d: token_secret is required", idx+1)
+		}
+
+		if c.Region == "" {
+			return ClustersConfig{}, fmt.Errorf("cluster #%d: region is required", idx+1)
+		}
+
+		if c.URL == "" || !strings.HasPrefix(c.URL, "http") {
+			return ClustersConfig{}, fmt.Errorf("cluster #%d: url is required", idx+1)
 		}
 	}
 

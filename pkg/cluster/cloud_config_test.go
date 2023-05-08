@@ -46,6 +46,16 @@ clusters:
 	assert.NotNil(t, err)
 	assert.NotNil(t, cfg)
 
+	// Non full config
+	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
+clusters:
+- url: abcd
+  region: cluster-1
+`))
+
+	assert.NotNil(t, err)
+	assert.NotNil(t, cfg)
+
 	// Valid config with one cluster
 	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
 clusters:
