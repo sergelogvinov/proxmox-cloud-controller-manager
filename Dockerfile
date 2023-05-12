@@ -18,9 +18,9 @@ RUN make build-all-archs
 ########################################
 
 FROM --platform=${TARGETARCH} scratch AS release
-LABEL org.opencontainers.image.source https://github.com/sergelogvinov/proxmox-cloud-controller-manager \
-      org.opencontainers.image.licenses = "Apache-2.0" \
-      org.opencontainers.image.description = "Proxmox VE CCM for Kubernetes"
+LABEL org.opencontainers.image.source="https://github.com/sergelogvinov/proxmox-cloud-controller-manager" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.description="Proxmox VE CCM for Kubernetes"
 
 COPY --from=gcr.io/distroless/static-debian11:nonroot . .
 ARG TARGETARCH

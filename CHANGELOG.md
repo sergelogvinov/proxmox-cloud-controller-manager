@@ -1,4 +1,16 @@
 
+<a name="v0.1.1"></a>
+## [v0.1.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.1.0...v0.1.1) (2023-05-08)
+
+Welcome to the v0.1.1 release of Kubernetes cloud controller manager for Proxmox!
+
+### Changelog
+
+* f8c32e1 test: cloud config
+* c051d38 ci: build trigger
+* a1e7cd0 chore: bump deps
+* f813f30 ci: add git version
+
 <a name="v0.1.0"></a>
 ## [v0.1.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.0.1...v0.1.0) (2023-05-07)
 
@@ -6,6 +18,7 @@ Welcome to the v0.1.0 release of Kubernetes cloud controller manager for Proxmox
 
 ### Changelog
 
+* 3796b9a chore: release v0.1.0
 * 2fb410d docs: update readme
 * fb96218 test: more tests
 * b776e54 test: mock proxmox api
