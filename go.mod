@@ -6,7 +6,7 @@ require (
 	github.com/Telmate/proxmox-api-go v0.0.0-20230418175406-5c7733d8993f
 	github.com/jarcoal/httpmock v1.3.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.27.1
 	k8s.io/apimachinery v0.27.1
