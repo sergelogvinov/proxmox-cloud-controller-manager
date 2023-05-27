@@ -3,16 +3,16 @@ module github.com/sergelogvinov/proxmox-cloud-controller-manager
 go 1.20
 
 require (
-	github.com/Telmate/proxmox-api-go v0.0.0-20230418175406-5c7733d8993f
+	github.com/Telmate/proxmox-api-go v0.0.0-20230524203107-41e6ffadedb1
 	github.com/jarcoal/httpmock v1.3.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.27.1
-	k8s.io/apimachinery v0.27.1
-	k8s.io/client-go v0.27.1
-	k8s.io/cloud-provider v0.27.1
-	k8s.io/component-base v0.27.1
+	k8s.io/api v0.27.2
+	k8s.io/apimachinery v0.27.2
+	k8s.io/client-go v0.27.2
+	k8s.io/cloud-provider v0.27.2
+	k8s.io/component-base v0.27.2
 	k8s.io/klog/v2 v2.100.1
 )
 
@@ -98,13 +98,13 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apiserver v0.27.1 // indirect
-	k8s.io/component-helpers v0.27.1 // indirect
-	k8s.io/controller-manager v0.27.1 // indirect
-	k8s.io/kms v0.27.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20230308215209-15aac26d736a // indirect
+	k8s.io/apiserver v0.27.2 // indirect
+	k8s.io/component-helpers v0.27.2 // indirect
+	k8s.io/controller-manager v0.27.2 // indirect
+	k8s.io/kms v0.27.2 // indirect
+	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491 // indirect
-	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.1.1 // indirect
+	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.1.2 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
