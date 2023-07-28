@@ -2,8 +2,10 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'charts/**'
 
 jobs:
   helm-release:
