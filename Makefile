@@ -2,6 +2,7 @@ REGISTRY ?= ghcr.io
 USERNAME ?= sergelogvinov
 PROJECT ?= proxmox-cloud-controller-manager
 IMAGE ?= $(REGISTRY)/$(USERNAME)/$(PROJECT)
+HELMREPO ?= $(REGISTRY)/$(USERNAME)/charts
 PLATFORM ?= linux/arm64,linux/amd64
 PUSH ?= false
 
@@ -84,6 +85,19 @@ helm-unit: ## Helm Unit Tests
 	@helm lint charts/proxmox-cloud-controller-manager
 	@helm template -f charts/proxmox-cloud-controller-manager/ci/values.yaml \
 		proxmox-cloud-controller-manager charts/proxmox-cloud-controller-manager >/dev/null
+
+.PHONY: helm-login
+helm-login: ## Helm Login
+	@echo "${HELM_TOKEN}" | helm registry login $(REGISTRY) --username $(USERNAME) --password-stdin
+
+.PHONY: helm-release
+helm-release: ## Helm Release
+	@rm -rf dist/
+	@helm package charts/proxmox-cloud-controller-manager -d dist
+	@helm push dist/proxmox-cloud-controller-manager-*.tgz oci://$(HELMREPO) 2>&1 | tee dist/.digest
+	@cosign sign --yes $(COSING_ARGS) $(HELMREPO)/proxmox-cloud-controller-manager@$$(cat dist/.digest | awk -F "[, ]+" '/Digest/{print $$NF}')
+
+############
 
 .PHONY: docs
 docs:
