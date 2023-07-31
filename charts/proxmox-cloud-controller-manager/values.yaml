@@ -84,7 +84,7 @@ securityContext:
   seccompProfile:
     type: RuntimeDefault
 
-# -- Resizer resource requests and limits.
+# -- Resource requests and limits.
 # ref: https://kubernetes.io/docs/user-guide/compute-resources/
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
