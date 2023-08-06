@@ -5,3 +5,7 @@
 /kubeconfig
 /proxmox-config.yaml
 #
+
+# cosign
+/cosign.key
+/cosign.pub

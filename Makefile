@@ -26,6 +26,8 @@ else
 BUILD_ARGS += --output type=docker
 endif
 
+COSING_ARGS ?=
+
 ############
 
 # Help Menu
@@ -135,3 +137,7 @@ images: ## Build images
 		--build-arg SHA="$(SHA)" \
 		-t $(IMAGE):$(TAG) \
 		-f Dockerfile .
+
+.PHONY: images-cosign
+images-cosign:
+	@cosign sign --yes $(COSING_ARGS) --recursive $(IMAGE):$(TAG)
