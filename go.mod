@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/Telmate/proxmox-api-go v0.0.0-20230524203107-41e6ffadedb1
-	github.com/jarcoal/httpmock v1.3.0
+	github.com/jarcoal/httpmock v1.3.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/yaml.v3 v3.0.1
