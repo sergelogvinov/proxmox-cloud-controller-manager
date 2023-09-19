@@ -32,6 +32,7 @@ import (
 	cloudprovider "k8s.io/cloud-provider"
 	"k8s.io/cloud-provider/app"
 	"k8s.io/cloud-provider/app/config"
+	"k8s.io/cloud-provider/names"
 	"k8s.io/cloud-provider/options"
 	"k8s.io/component-base/cli"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -47,7 +48,7 @@ func main() {
 	}
 
 	fss := cliflag.NamedFlagSets{}
-	command := app.NewCloudControllerManagerCommand(ccmOptions, cloudInitializer, controllerInitializers(), fss, wait.NeverStop)
+	command := app.NewCloudControllerManagerCommand(ccmOptions, cloudInitializer, app.DefaultInitFuncConstructors, names.CCMControllerAliases(), fss, wait.NeverStop)
 
 	command.Flags().VisitAll(func(flag *pflag.Flag) {
 		if flag.Name == "cloud-provider" {
@@ -59,34 +60,6 @@ func main() {
 
 	code := cli.Run(command)
 	os.Exit(code)
-}
-
-// If custom ClientNames are used, as below, then the controller will not use
-// the API server bootstrapped RBAC, and instead will require it to be installed
-// separately.
-func controllerInitializers() map[string]app.ControllerInitFuncConstructor {
-	controllerInitializers := app.DefaultInitFuncConstructors
-	if constructor, ok := controllerInitializers["cloud-node"]; ok {
-		constructor.InitContext.ClientName = proxmox.ServiceAccountName
-		controllerInitializers["cloud-node"] = constructor
-	}
-
-	if constructor, ok := controllerInitializers["cloud-node-lifecycle"]; ok {
-		constructor.InitContext.ClientName = proxmox.ServiceAccountName
-		controllerInitializers["cloud-node-lifecycle"] = constructor
-	}
-
-	if constructor, ok := controllerInitializers["service"]; ok {
-		constructor.InitContext.ClientName = proxmox.ServiceAccountName
-		controllerInitializers["service"] = constructor
-	}
-
-	if constructor, ok := controllerInitializers["route"]; ok {
-		constructor.InitContext.ClientName = proxmox.ServiceAccountName
-		controllerInitializers["route"] = constructor
-	}
-
-	return controllerInitializers
 }
 
 func cloudInitializer(config *config.CompletedConfig) cloudprovider.Interface {
