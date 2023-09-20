@@ -78,6 +78,13 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              {{- include "proxmox-cloud-controller-manager.selectorLabels" . | nindent 14 }}
       volumes:
         {{- if .Values.existingConfigSecret }}
         - name: cloud-config

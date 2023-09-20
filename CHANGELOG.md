@@ -1,4 +1,28 @@
 
+<a name="v0.2.0"></a>
+## [v0.2.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.1.1...v0.2.0) (2023-09-19)
+
+Welcome to the v0.2.0 release of Kubernetes cloud controller manager for Proxmox!
+
+### Features
+
+- cosign images
+- helm oci release
+
+### Changelog
+
+* 4e641a1 chore: bump deps
+* 591b88d chore: bump actions/checkout from 3 to 4
+* 45e3aeb chore: bump sigstore/cosign-installer from 3.1.1 to 3.1.2
+* 8076eee chore: bump github actions deps
+* bc879ab feat: cosign images
+* abd63a2 chore: bump deps
+* f8d1712 feat: helm oci release
+* dfd7c5f chore: bump deps
+* 38da18f ci: fix git tag
+* d8c6bed chore: bump deps
+* 6d79605 chore: release v0.1.1
+
 <a name="v0.1.1"></a>
 ## [v0.1.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.1.0...v0.1.1) (2023-05-08)
 
