@@ -66,6 +66,9 @@ spec:
             - name: cloud-config
               mountPath: /etc/proxmox
               readOnly: true
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -99,4 +102,7 @@ spec:
           secret:
             secretName: {{ include "proxmox-cloud-controller-manager.fullname" . }}
             defaultMode: 416
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
