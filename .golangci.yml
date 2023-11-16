@@ -3,7 +3,7 @@
 
 # options for analysis running
 run:
-  go: '1.20'
+  go: '1.21'
   # default concurrency is a available CPU number
   # concurrency: 4
 
@@ -157,12 +157,14 @@ linters:
     - paralleltest
     - promlinter # https://github.com/golangci/golangci-lint/issues/2222
     - tagliatelle # we have many different conventions
+    - tagalign # too annoying
+    - testifylint
     - testpackage
     - thelper
     - typecheck
     - varnamelen # too annoying
     - wrapcheck
-    - contextcheck # enable once golangci-lint 1.50.1 or 1.51 lands
+    - perfsprint
 
     # abandoned linters for which golangci shows the warning that the repo is archived by the owner
     - golint
