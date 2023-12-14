@@ -3,17 +3,17 @@ module github.com/sergelogvinov/proxmox-cloud-controller-manager
 go 1.21
 
 require (
-	github.com/Telmate/proxmox-api-go v0.0.0-20230616173359-03f4e428f6c6
+	github.com/Telmate/proxmox-api-go v0.0.0-20231207182448-31826f2fdc39
 	github.com/jarcoal/httpmock v1.3.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.28.3
-	k8s.io/apimachinery v0.28.3
-	k8s.io/client-go v0.28.3
-	k8s.io/cloud-provider v0.28.3
-	k8s.io/component-base v0.28.3
-	k8s.io/klog/v2 v2.100.1
+	k8s.io/api v0.28.4
+	k8s.io/apimachinery v0.28.4
+	k8s.io/client-go v0.28.4
+	k8s.io/cloud-provider v0.28.4
+	k8s.io/component-base v0.28.4
+	k8s.io/klog/v2 v2.110.1
 )
 
 require (
@@ -63,7 +63,7 @@ require (
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
-	github.com/spf13/cobra v1.7.0 // indirect
+	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.10 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.10 // indirect
@@ -98,10 +98,10 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apiserver v0.28.3 // indirect
-	k8s.io/component-helpers v0.28.3 // indirect
-	k8s.io/controller-manager v0.28.3 // indirect
-	k8s.io/kms v0.28.3 // indirect
+	k8s.io/apiserver v0.28.4 // indirect
+	k8s.io/component-helpers v0.28.4 // indirect
+	k8s.io/controller-manager v0.28.4 // indirect
+	k8s.io/kms v0.28.4 // indirect
 	k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9 // indirect
 	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.1.2 // indirect

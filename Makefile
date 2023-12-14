@@ -138,6 +138,10 @@ images: ## Build images
 		-t $(IMAGE):$(TAG) \
 		-f Dockerfile .
 
+.PHONY: images-checks
+images-checks: images
+	trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL --no-progress $(IMAGE):$(TAG)
+
 .PHONY: images-cosign
 images-cosign:
 	@cosign sign --yes $(COSING_ARGS) --recursive $(IMAGE):$(TAG)
