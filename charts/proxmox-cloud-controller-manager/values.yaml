@@ -123,6 +123,12 @@ tolerations:
 # -- Affinity for data pods assignment.
 # ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
 affinity: {}
+#  nodeAffinity:
+#    requiredDuringSchedulingIgnoredDuringExecution:
+#      nodeSelectorTerms:
+#      - matchExpressions:
+#        - key: node-role.kubernetes.io/control-plane
+#          operator: Exists
 
 # -- Additional volumes for Pods
 extraVolumes: []

@@ -35,8 +35,13 @@ enabledControllers:
   - cloud-node-lifecycle
 
 # Deploy CCM only on control-plane nodes
-nodeSelector:
-  node-role.kubernetes.io/control-plane: ""
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
 tolerations:
   - key: node-role.kubernetes.io/control-plane
     effect: NoSchedule
