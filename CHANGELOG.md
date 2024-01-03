@@ -1,6 +1,34 @@
 
+<a name="v0.3.0"></a>
+## [v0.3.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.2.0...v0.3.0) (2024-01-03)
+
+Welcome to the v0.3.0 release of Kubernetes cloud controller manager for Proxmox!
+
+### Bug Fixes
+
+- namespace for extension-apiserver-authentication rolebinding
+
+### Features
+
+- can use user/password
+- **chart:** add extraVolumes + extraVolumeMounts
+
+### Changelog
+
+* ac2f564 feat: can use user/password
+* 41a7f8d chore: bump deps
+* 74d8c78 chore: bump deps
+* a76b7c2 chore: replace nodeSelector with nodeAffinity in chart + manifests
+* 93d8edc chore: bump deps
+* 4f7aaeb chore: bump deps
+* eef9c9c chore: bump deps
+* d54368e feat(chart): add extraVolumes + extraVolumeMounts
+* 3a3c070 chore: bump deps
+* 5c1a382 fix: namespace for extension-apiserver-authentication rolebinding
+* 75ead90 chore: bump deps
+
 <a name="v0.2.0"></a>
-## [v0.2.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.1.1...v0.2.0) (2023-09-19)
+## [v0.2.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.1.1...v0.2.0) (2023-09-20)
 
 Welcome to the v0.2.0 release of Kubernetes cloud controller manager for Proxmox!
 
@@ -11,6 +39,7 @@ Welcome to the v0.2.0 release of Kubernetes cloud controller manager for Proxmox
 
 ### Changelog
 
+* d2da2e8 chore: release v0.2.0
 * 4e641a1 chore: bump deps
 * 591b88d chore: bump actions/checkout from 3 to 4
 * 45e3aeb chore: bump sigstore/cosign-installer from 3.1.1 to 3.1.2
