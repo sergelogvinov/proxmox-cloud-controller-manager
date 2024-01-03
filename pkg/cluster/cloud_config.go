@@ -33,6 +33,8 @@ type ClustersConfig struct {
 		Insecure    bool   `yaml:"insecure,omitempty"`
 		TokenID     string `yaml:"token_id,omitempty"`
 		TokenSecret string `yaml:"token_secret,omitempty"`
+		Username    string `yaml:"username,omitempty"`
+		Password    string `yaml:"password,omitempty"`
 		Region      string `yaml:"region,omitempty"`
 	} `yaml:"clusters,omitempty"`
 }
@@ -48,12 +50,12 @@ func ReadCloudConfig(config io.Reader) (ClustersConfig, error) {
 	}
 
 	for idx, c := range cfg.Clusters {
-		if c.TokenID == "" {
-			return ClustersConfig{}, fmt.Errorf("cluster #%d: token_id is required", idx+1)
-		}
-
-		if c.TokenSecret == "" {
-			return ClustersConfig{}, fmt.Errorf("cluster #%d: token_secret is required", idx+1)
+		if c.Username != "" && c.Password != "" {
+			if c.TokenID != "" || c.TokenSecret != "" {
+				return ClustersConfig{}, fmt.Errorf("cluster #%d: token_id and token_secret are not allowed when username and password are set", idx+1)
+			}
+		} else if c.TokenID == "" || c.TokenSecret == "" {
+			return ClustersConfig{}, fmt.Errorf("cluster #%d: either username and password or token_id and token_secret are required", idx+1)
 		}
 
 		if c.Region == "" {
