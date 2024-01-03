@@ -68,6 +68,19 @@ clusters:
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 1, len(cfg.Clusters))
+
+	// Valid config with one cluster (username/password)
+	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
+clusters:
+  - url: https://example.com
+    insecure: false
+    username: "user@pam"
+    password: "secret"
+    region: cluster-1
+`))
+	assert.Nil(t, err)
+	assert.NotNil(t, cfg)
+	assert.Equal(t, 1, len(cfg.Clusters))
 }
 
 func TestReadCloudConfigFromFile(t *testing.T) {

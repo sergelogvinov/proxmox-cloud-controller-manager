@@ -50,7 +50,13 @@ func NewCluster(config *ClustersConfig, hclient *http.Client) (*Cluster, error) 
 				return nil, err
 			}
 
-			client.SetAPIToken(cfg.TokenID, cfg.TokenSecret)
+			if cfg.Username != "" && cfg.Password != "" {
+				if err := client.Login(cfg.Username, cfg.Password, ""); err != nil {
+					return nil, err
+				}
+			} else {
+				client.SetAPIToken(cfg.TokenID, cfg.TokenSecret)
+			}
 
 			proxmox[cfg.Region] = client
 		}
