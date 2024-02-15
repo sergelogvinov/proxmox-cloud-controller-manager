@@ -92,7 +92,7 @@ func TestFindVMByNameNonExist(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	httpmock.RegisterResponder("GET", "https://127.0.0.1:8006/api2/json/cluster/resources",
-		func(req *http.Request) (*http.Response, error) {
+		func(_ *http.Request) (*http.Response, error) {
 			return httpmock.NewJsonResponse(200, map[string]interface{}{
 				"data": []interface{}{
 					map[string]interface{}{
@@ -107,7 +107,7 @@ func TestFindVMByNameNonExist(t *testing.T) {
 	)
 
 	httpmock.RegisterResponder("GET", "https://127.0.0.2:8006/api2/json/cluster/resources",
-		func(req *http.Request) (*http.Response, error) {
+		func(_ *http.Request) (*http.Response, error) {
 			return httpmock.NewJsonResponse(200, map[string]interface{}{
 				"data": []interface{}{
 					map[string]interface{}{
@@ -154,7 +154,7 @@ func TestFindVMByNameExist(t *testing.T) {
 	)
 
 	httpmock.RegisterResponder("GET", "https://127.0.0.2:8006/api2/json/cluster/resources",
-		func(req *http.Request) (*http.Response, error) {
+		func(_ *http.Request) (*http.Response, error) {
 			return httpmock.NewJsonResponse(200, map[string]interface{}{
 				"data": []interface{}{
 					map[string]interface{}{
