@@ -26,7 +26,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
+	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmox"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	cloudprovider "k8s.io/cloud-provider"
@@ -52,7 +52,7 @@ func main() {
 
 	command.Flags().VisitAll(func(flag *pflag.Flag) {
 		if flag.Name == "cloud-provider" {
-			if err := flag.Value.Set(provider.ProviderName); err != nil {
+			if err := flag.Value.Set(proxmox.ProviderName); err != nil {
 				klog.Fatalf("unable to set cloud-provider flag value: %s", err)
 			}
 		}

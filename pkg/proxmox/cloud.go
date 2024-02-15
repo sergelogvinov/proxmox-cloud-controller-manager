@@ -30,6 +30,9 @@ import (
 )
 
 const (
+	// ProviderName is the name of the Proxmox provider.
+	ProviderName = provider.ProviderName
+
 	// ServiceAccountName is the service account name used in kube-system namespace.
 	ServiceAccountName = provider.ProviderName + "-cloud-controller-manager"
 )
