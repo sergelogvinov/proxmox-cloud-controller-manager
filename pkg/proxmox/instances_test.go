@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -464,8 +465,6 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 func TestGetProviderID(t *testing.T) {
 	t.Parallel()
 
-	i := newInstances(nil)
-
 	tests := []struct {
 		msg      string
 		region   string
@@ -492,7 +491,7 @@ func TestGetProviderID(t *testing.T) {
 		t.Run(fmt.Sprint(testCase.msg), func(t *testing.T) {
 			t.Parallel()
 
-			expected := i.getProviderID(testCase.region, testCase.vmr)
+			expected := provider.GetProviderID(testCase.region, testCase.vmr)
 			assert.Equal(t, expected, testCase.expected)
 		})
 	}
@@ -500,8 +499,6 @@ func TestGetProviderID(t *testing.T) {
 
 func TestParseProviderID(t *testing.T) {
 	t.Parallel()
-
-	i := newInstances(nil)
 
 	tests := []struct {
 		msg             string
@@ -540,7 +537,7 @@ func TestParseProviderID(t *testing.T) {
 		{
 			msg:           "Cluster and wrong InstanceID",
 			magic:         "proxmox://cluster/name",
-			expectedError: fmt.Errorf("providerID \"proxmox://cluster/name\" didn't match expected format \"proxmox://region/InstanceID\""),
+			expectedError: fmt.Errorf("InstanceID have to be a number, but got \"name\""),
 		},
 	}
 
@@ -550,7 +547,7 @@ func TestParseProviderID(t *testing.T) {
 		t.Run(fmt.Sprint(testCase.msg), func(t *testing.T) {
 			t.Parallel()
 
-			vmr, cluster, err := i.parseProviderID(testCase.magic)
+			vmr, cluster, err := provider.ParseProviderID(testCase.magic)
 
 			if testCase.expectedError != nil {
 				assert.Equal(t, testCase.expectedError, err)

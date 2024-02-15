@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
 )
 
 func TestNewCloudError(t *testing.T) {
@@ -73,7 +74,7 @@ clusters:
 	assert.Equal(t, res, false)
 
 	pName := cloud.ProviderName()
-	assert.Equal(t, pName, ProviderName)
+	assert.Equal(t, pName, provider.ProviderName)
 
 	clID := cloud.HasClusterID()
 	assert.Equal(t, clID, true)

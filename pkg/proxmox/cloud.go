@@ -22,6 +22,7 @@ import (
 	"io"
 
 	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
 
 	clientkubernetes "k8s.io/client-go/kubernetes"
 	cloudprovider "k8s.io/cloud-provider"
@@ -29,10 +30,8 @@ import (
 )
 
 const (
-	// ProviderName is the name of the Proxmox provider.
-	ProviderName = "proxmox"
 	// ServiceAccountName is the service account name used in kube-system namespace.
-	ServiceAccountName = "proxmox-cloud-controller-manager"
+	ServiceAccountName = provider.ProviderName + "-cloud-controller-manager"
 )
 
 type cloud struct {
@@ -45,7 +44,7 @@ type cloud struct {
 }
 
 func init() {
-	cloudprovider.RegisterCloudProvider(ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
+	cloudprovider.RegisterCloudProvider(provider.ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
 		cfg, err := cluster.ReadCloudConfig(config)
 		if err != nil {
 			klog.Errorf("failed to read config: %v", err)
@@ -137,7 +136,7 @@ func (c *cloud) Routes() (cloudprovider.Routes, bool) {
 
 // ProviderName returns the cloud provider ID.
 func (c *cloud) ProviderName() string {
-	return ProviderName
+	return provider.ProviderName
 }
 
 // HasClusterID is not implemented.

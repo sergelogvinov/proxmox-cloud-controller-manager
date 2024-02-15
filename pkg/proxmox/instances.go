@@ -19,13 +19,12 @@ package proxmox
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 
 	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
 
 	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
@@ -48,7 +47,7 @@ func newInstances(client *cluster.Cluster) *instances {
 func (i *instances) InstanceExists(_ context.Context, node *v1.Node) (bool, error) {
 	klog.V(4).Info("instances.InstanceExists() called node: ", node.Name)
 
-	if !strings.HasPrefix(node.Spec.ProviderID, ProviderName) {
+	if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
 		klog.V(4).Infof("instances.InstanceExists() node %s has foreign providerID: %s, skipped", node.Name, node.Spec.ProviderID)
 
 		return true, nil
@@ -73,13 +72,13 @@ func (i *instances) InstanceExists(_ context.Context, node *v1.Node) (bool, erro
 func (i *instances) InstanceShutdown(_ context.Context, node *v1.Node) (bool, error) {
 	klog.V(4).Info("instances.InstanceShutdown() called, node: ", node.Name)
 
-	if !strings.HasPrefix(node.Spec.ProviderID, ProviderName) {
+	if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
 		klog.V(4).Infof("instances.InstanceShutdown() node %s has foreign providerID: %s, skipped", node.Name, node.Spec.ProviderID)
 
 		return false, nil
 	}
 
-	vmr, region, err := i.parseProviderID(node.Spec.ProviderID)
+	vmr, region, err := provider.ParseProviderID(node.Spec.ProviderID)
 	if err != nil {
 		klog.Errorf("instances.InstanceShutdown() failed to parse providerID %s: %v", node.Spec.ProviderID, err)
 
@@ -126,7 +125,7 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 			if err != nil {
 				return nil, fmt.Errorf("instances.InstanceMetadata() - failed to find instance by name %s: %v, skipped", node.Name, err)
 			}
-		} else if !strings.HasPrefix(node.Spec.ProviderID, ProviderName) {
+		} else if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
 			klog.V(4).Infof("instances.InstanceMetadata() node %s has foreign providerID: %s, skipped", node.Name, node.Spec.ProviderID)
 
 			return &cloudprovider.InstanceMetadata{}, nil
@@ -148,7 +147,7 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 		}
 
 		return &cloudprovider.InstanceMetadata{
-			ProviderID:    i.getProviderID(region, vmRef),
+			ProviderID:    provider.GetProviderID(region, vmRef),
 			NodeAddresses: addresses,
 			InstanceType:  instanceType,
 			Zone:          vmRef.Node(),
@@ -162,7 +161,7 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 }
 
 func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
-	vm, region, err := i.parseProviderID(node.Spec.ProviderID)
+	vm, region, err := provider.ParseProviderID(node.Spec.ProviderID)
 	if err != nil {
 		return nil, "", fmt.Errorf("instances.getInstance() error: %v", err)
 	}
@@ -204,28 +203,4 @@ func (i *instances) getInstanceType(vmRef *pxapi.VmRef, region string) (string, 
 	return fmt.Sprintf("%.0fVCPU-%.0fGB",
 		vmInfo["maxcpu"].(float64),
 		vmInfo["maxmem"].(float64)/1024/1024/1024), nil
-}
-
-var providerIDRegexp = regexp.MustCompile(`^` + ProviderName + `://([^/]*)/([^/]+)$`)
-
-func (i *instances) getProviderID(region string, vmr *pxapi.VmRef) string {
-	return fmt.Sprintf("%s://%s/%d", ProviderName, region, vmr.VmId())
-}
-
-func (i *instances) parseProviderID(providerID string) (*pxapi.VmRef, string, error) {
-	if !strings.HasPrefix(providerID, ProviderName) {
-		return nil, "", fmt.Errorf("foreign providerID or empty \"%s\"", providerID)
-	}
-
-	matches := providerIDRegexp.FindStringSubmatch(providerID)
-	if len(matches) != 3 {
-		return nil, "", fmt.Errorf("providerID \"%s\" didn't match expected format \"%s://region/InstanceID\"", providerID, ProviderName)
-	}
-
-	vmID, err := strconv.Atoi(matches[2])
-	if err != nil {
-		return nil, "", fmt.Errorf("providerID \"%s\" didn't match expected format \"%s://region/InstanceID\"", providerID, ProviderName)
-	}
-
-	return pxapi.NewVmRef(vmID), matches[1], nil
 }
