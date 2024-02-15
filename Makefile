@@ -7,7 +7,7 @@ PLATFORM ?= linux/arm64,linux/amd64
 PUSH ?= false
 
 VERSION ?= $(shell git describe --dirty --tag --match='v*')
-SHA ?= $(shell git describe --match=none --always --abbrev=8 --dirty)
+SHA ?= $(shell git describe --match=none --always --abbrev=7 --dirty)
 TAG ?= $(VERSION)
 
 GO_LDFLAGS := -s -w
@@ -21,7 +21,7 @@ TESTARGS ?= "-v"
 
 BUILD_ARGS := --platform=$(PLATFORM)
 ifeq ($(PUSH),true)
-BUILD_ARGS += --push=$(PUSH)
+BUILD_ARGS += --push=$(PUSH) --output type=image,annotation-index.org.opencontainers.image.source="https://github.com/$(USERNAME)/$(PROJECT)"
 else
 BUILD_ARGS += --output type=docker
 endif
