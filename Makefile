@@ -103,6 +103,7 @@ helm-release: ## Helm Release
 
 .PHONY: docs
 docs:
+	yq -i '.appVersion = "$(TAG)"' charts/proxmox-cloud-controller-manager/Chart.yaml
 	helm template -n kube-system proxmox-cloud-controller-manager \
 		-f charts/proxmox-cloud-controller-manager/values.edge.yaml \
 		--set-string image.tag=$(TAG) \
