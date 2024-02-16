@@ -417,6 +417,37 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 			},
 		},
 		{
+			msg: "NodeExistsDualstack",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-1-node-1",
+					Annotations: map[string]string{
+						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4,2001::1",
+					},
+				},
+			},
+			expected: &cloudprovider.InstanceMetadata{
+				ProviderID: "proxmox://cluster-1/100",
+				NodeAddresses: []v1.NodeAddress{
+					{
+						Type:    v1.NodeInternalIP,
+						Address: "1.2.3.4",
+					},
+					{
+						Type:    v1.NodeInternalIP,
+						Address: "2001::1",
+					},
+					{
+						Type:    v1.NodeHostName,
+						Address: "cluster-1-node-1",
+					},
+				},
+				InstanceType: "4VCPU-10GB",
+				Region:       "cluster-1",
+				Zone:         "pve-1",
+			},
+		},
+		{
 			msg: "NodeExistsCluster2",
 			node: &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{
