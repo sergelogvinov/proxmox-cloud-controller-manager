@@ -138,7 +138,12 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 			}
 		}
 
-		addresses := []v1.NodeAddress{{Type: v1.NodeInternalIP, Address: providedIP}}
+		addresses := []v1.NodeAddress{}
+
+		for _, ip := range strings.Split(providedIP, ",") {
+			addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: ip})
+		}
+
 		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeHostName, Address: node.Name})
 
 		instanceType, err := i.getInstanceType(vmRef, region)
