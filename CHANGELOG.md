@@ -1,4 +1,25 @@
 
+<a name="v0.4.0"></a>
+## [v0.4.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.3.0...v0.4.0) (2024-02-16)
+
+Welcome to the v0.4.0 release of Kubernetes cloud controller manager for Proxmox!
+
+### Bug Fixes
+
+- init provider
+
+### Features
+
+- kubelet dualstack support
+
+### Changelog
+
+* a752d10 feat: kubelet dualstack support
+* de55986 fix: init provider
+* 10592d1 chore: bump deps
+* 7b73b5f refactor: move providerID to the package
+* 6f0c667 chore: release v0.3.0
+
 <a name="v0.3.0"></a>
 ## [v0.3.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.2.0...v0.3.0) (2024-01-03)
 
