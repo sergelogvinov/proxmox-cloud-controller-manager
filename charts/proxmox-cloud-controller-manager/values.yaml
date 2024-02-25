@@ -61,6 +61,36 @@ serviceAccount:
 # -- CCM pods' priorityClassName.
 priorityClassName: system-cluster-critical
 
+# -- Add additional init containers to the CCM pods.
+# ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+initContainers: []
+  # - name: loadbalancer
+  #   restartPolicy: Always
+  #   image: ghcr.io/sergelogvinov/haproxy:2.8.3-alpine3.18
+  #   imagePullPolicy: IfNotPresent
+  #   env:
+  #     - name: SVC
+  #       value: "proxmox.domain.com"
+  #     - name: PORT
+  #       value: "8006"
+  #   securityContext:
+  #     runAsUser: 99
+  #     runAsGroup: 99
+  #   resources:
+  #     limits:
+  #       cpu: 50m
+  #       memory: 64Mi
+  #     requests:
+  #       cpu: 50m
+  #       memory: 32Mi
+
+# -- hostAliases Deployment pod host aliases
+# ref: https://kubernetes.io/docs/tasks/network/customize-hosts-file-for-pods/
+hostAliases: []
+  # - ip: 127.0.0.1
+  #   hostnames:
+  #     - proxmox.domain.com
+
 # -- Annotations for data pods.
 # ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 podAnnotations: {}
