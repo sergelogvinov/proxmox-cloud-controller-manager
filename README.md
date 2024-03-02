@@ -125,7 +125,8 @@ Deploy Proxmox CCM
 
 ```shell
 helm upgrade -i --namespace=kube-system -f proxmox-ccm.yaml \
-		proxmox-cloud-controller-manager charts/proxmox-cloud-controller-manager
+    proxmox-cloud-controller-manager \
+    oci://ghcr.io/sergelogvinov/charts/proxmox-cloud-controller-manager
 ```
 
 More options you can find [here](charts/proxmox-cloud-controller-manager)
