@@ -4,6 +4,10 @@
 
 replicaCount: 1
 
+# -- hostnetwork when the pods network can't reach proxmox 
+# for example with calico , the nodes tainted and calico controller will not run change to true
+hostNetwork: false
+
 image:
   # -- Proxmox CCM image.
   repository: ghcr.io/sergelogvinov/proxmox-cloud-controller-manager
