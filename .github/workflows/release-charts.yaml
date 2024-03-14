@@ -23,9 +23,9 @@ jobs:
           fetch-depth: 0
 
       - name: Install Helm
-        uses: azure/setup-helm@v3
+        uses: azure/setup-helm@v4
         with:
-          version: v3.12.2
+          version: v3.13.3
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.4.0
 
