@@ -123,12 +123,12 @@ release-update:
 #
 
 docker-init:
-	docker run --rm --privileged multiarch/qemu-user-static:register --reset
+	@docker run --rm --privileged multiarch/qemu-user-static -p yes ||:
 
-	docker context create multiarch ||:
-	docker buildx create --name multiarch --driver docker-container --use ||:
-	docker context use multiarch
-	docker buildx inspect --bootstrap multiarch
+	@docker context create multiarch ||:
+	@docker buildx create --name multiarch --driver docker-container --use ||:
+	@docker context use multiarch
+	@docker buildx inspect --bootstrap multiarch
 
 .PHONY: images
 images: ## Build images
