@@ -1,6 +1,7 @@
 name: Build edge
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -23,11 +24,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
       - name: Unshallow
         run: git fetch --prune --unshallow
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.4.0
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
       - name: Set up docker buildx
         run: make docker-init
 
