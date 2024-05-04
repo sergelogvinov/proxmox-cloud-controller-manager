@@ -1,4 +1,25 @@
 
+<a name="v0.4.1"></a>
+## [v0.4.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.4.0...v0.4.1) (2024-05-04)
+
+Welcome to the v0.4.1 release of Kubernetes cloud controller manager for Proxmox!
+
+### Features
+
+- **chart:** add daemonset mode
+- **chart:** add hostAliases and initContainers
+
+### Changelog
+
+* ce92b3e feat(chart): add daemonset mode
+* 4771769 chore: bump deps
+* 12d2858 ci: update multi arch build init
+* 3c7cd44 ci: update multi arch build init
+* 36757fc ci: update multi arch build init
+* c1ab34c chore: bump deps
+* d1e6e70 docs: update helm install command
+* 9ba9ff2 feat(chart): add hostAliases and initContainers
+
 <a name="v0.4.0"></a>
 ## [v0.4.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.3.0...v0.4.0) (2024-02-16)
 
@@ -14,6 +35,7 @@ Welcome to the v0.4.0 release of Kubernetes cloud controller manager for Proxmox
 
 ### Changelog
 
+* 677e6cc chore: release v0.4.0
 * a752d10 feat: kubelet dualstack support
 * de55986 fix: init provider
 * 10592d1 chore: bump deps
