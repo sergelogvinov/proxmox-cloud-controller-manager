@@ -1,8 +1,8 @@
 
-<a name="v0.4.1"></a>
-## [v0.4.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.4.0...v0.4.1) (2024-05-04)
+<a name="v0.4.2"></a>
+## [v0.4.2](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.4.0...v0.4.2) (2024-05-04)
 
-Welcome to the v0.4.1 release of Kubernetes cloud controller manager for Proxmox!
+Welcome to the v0.4.2 release of Kubernetes cloud controller manager for Proxmox!
 
 ### Features
 
@@ -11,6 +11,7 @@ Welcome to the v0.4.1 release of Kubernetes cloud controller manager for Proxmox
 
 ### Changelog
 
+* c02bc2f chore: release v0.4.1
 * ce92b3e feat(chart): add daemonset mode
 * 4771769 chore: bump deps
 * 12d2858 ci: update multi arch build init
