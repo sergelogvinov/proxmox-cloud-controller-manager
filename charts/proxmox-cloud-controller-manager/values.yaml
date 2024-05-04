@@ -128,6 +128,11 @@ resources:
     cpu: 10m
     memory: 32Mi
 
+# -- Deploy CCM  in Daemonset mode.
+# CCM will use hostNetwork.
+# It allows to use CCM without CNI plugins.
+useDaemonSet: false
+
 # -- Deployment update stategy type.
 # ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment
 updateStrategy:

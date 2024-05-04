@@ -102,7 +102,7 @@ subjects:
 ---
 # Source: proxmox-cloud-controller-manager/templates/deployment.yaml
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: proxmox-cloud-controller-manager
   labels:
@@ -113,8 +113,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
   namespace: kube-system
 spec:
-  replicas: 1
-  strategy:
+  updateStrategy:
     type: RollingUpdate
   selector:
     matchLabels:
@@ -137,6 +136,8 @@ spec:
         runAsGroup: 10258
         runAsNonRoot: true
         runAsUser: 10258
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
       initContainers:
         []
       containers:
@@ -151,10 +152,10 @@ spec:
           image: "ghcr.io/sergelogvinov/proxmox-cloud-controller-manager:v0.4.0"
           imagePullPolicy: IfNotPresent
           args:
-            - --v=4
+            - --v=2
             - --cloud-provider=proxmox
             - --cloud-config=/etc/proxmox/config.yaml
-            - --controllers=cloud-node-lifecycle
+            - --controllers=cloud-node,cloud-node-lifecycle
             - --leader-elect-resource-name=cloud-controller-manager-proxmox
             - --use-service-account-credentials
             - --secure-port=10258
@@ -175,12 +176,15 @@ spec:
               mountPath: /etc/proxmox
               readOnly: true
       affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-role.kubernetes.io/control-plane
-                operator: Exists
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: proxmox-cloud-controller-manager
+                    app.kubernetes.io/instance: proxmox-cloud-controller-manager
+                topologyKey: topology.kubernetes.io/zone
+              weight: 1
       tolerations:
         - effect: NoSchedule
           key: node-role.kubernetes.io/control-plane
@@ -188,14 +192,9 @@ spec:
         - effect: NoSchedule
           key: node.cloudprovider.kubernetes.io/uninitialized
           operator: Exists
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: proxmox-cloud-controller-manager
-              app.kubernetes.io/instance: proxmox-cloud-controller-manager
+        - effect: NoSchedule
+          key: node.kubernetes.io/not-ready
+          operator: Exists
       volumes:
         - name: cloud-config
           secret:

@@ -112,6 +112,10 @@ docs:
 		-f charts/proxmox-cloud-controller-manager/values.talos.yaml \
 		--set-string image.tag=$(TAG) \
 		charts/proxmox-cloud-controller-manager > docs/deploy/cloud-controller-manager-talos.yml
+	helm template -n kube-system proxmox-cloud-controller-manager \
+		--set-string image.tag=$(TAG) \
+		--set useDaemonSet=true \
+		charts/proxmox-cloud-controller-manager > docs/deploy/cloud-controller-manager-daemonset.yml
 	helm-docs --sort-values-order=file charts/proxmox-cloud-controller-manager
 
 release-update:

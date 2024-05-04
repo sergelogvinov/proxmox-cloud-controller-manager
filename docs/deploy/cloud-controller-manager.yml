@@ -5,7 +5,7 @@ kind: ServiceAccount
 metadata:
   name: proxmox-cloud-controller-manager
   labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.2.0
+    helm.sh/chart: proxmox-cloud-controller-manager-0.2.1
     app.kubernetes.io/name: proxmox-cloud-controller-manager
     app.kubernetes.io/instance: proxmox-cloud-controller-manager
     app.kubernetes.io/version: "v0.4.0"
@@ -18,7 +18,7 @@ kind: ClusterRole
 metadata:
   name: system:proxmox-cloud-controller-manager
   labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.2.0
+    helm.sh/chart: proxmox-cloud-controller-manager-0.2.1
     app.kubernetes.io/name: proxmox-cloud-controller-manager
     app.kubernetes.io/instance: proxmox-cloud-controller-manager
     app.kubernetes.io/version: "v0.4.0"
@@ -106,7 +106,7 @@ kind: Deployment
 metadata:
   name: proxmox-cloud-controller-manager
   labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.2.0
+    helm.sh/chart: proxmox-cloud-controller-manager-0.2.1
     app.kubernetes.io/name: proxmox-cloud-controller-manager
     app.kubernetes.io/instance: proxmox-cloud-controller-manager
     app.kubernetes.io/version: "v0.4.0"
@@ -137,8 +137,6 @@ spec:
         runAsGroup: 10258
         runAsNonRoot: true
         runAsUser: 10258
-      hostAliases:
-        []
       initContainers:
         []
       containers:
