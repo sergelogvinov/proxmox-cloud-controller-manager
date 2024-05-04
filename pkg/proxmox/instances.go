@@ -48,7 +48,7 @@ func (i *instances) InstanceExists(_ context.Context, node *v1.Node) (bool, erro
 	klog.V(4).Info("instances.InstanceExists() called node: ", node.Name)
 
 	if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
-		klog.V(4).Infof("instances.InstanceExists() node %s has foreign providerID: %s, skipped", node.Name, node.Spec.ProviderID)
+		klog.V(4).Infof("instances.InstanceExists() node %s has providerID: %s, omitting unmanaged node", node.Name, node.Spec.ProviderID)
 
 		return true, nil
 	}
