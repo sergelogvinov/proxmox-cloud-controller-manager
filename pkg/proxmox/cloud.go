@@ -50,7 +50,7 @@ func init() {
 	cloudprovider.RegisterCloudProvider(provider.ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
 		cfg, err := cluster.ReadCloudConfig(config)
 		if err != nil {
-			klog.Errorf("failed to read config: %v", err)
+			klog.ErrorS(err, "failed to read config")
 
 			return nil, err
 		}
@@ -79,7 +79,7 @@ func newCloud(config *cluster.ClustersConfig) (cloudprovider.Interface, error) {
 func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, stop <-chan struct{}) {
 	c.kclient = clientBuilder.ClientOrDie(ServiceAccountName)
 
-	klog.Infof("clientset initialized")
+	klog.InfoS("clientset initialized")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	c.ctx = ctx
@@ -87,18 +87,18 @@ func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, 
 
 	err := c.client.CheckClusters()
 	if err != nil {
-		klog.Errorf("failed to check proxmox cluster: %v", err)
+		klog.ErrorS(err, "failed to check proxmox cluster")
 	}
 
 	// Broadcast the upstream stop signal to all provider-level goroutines
 	// watching the provider's context for cancellation.
 	go func(provider *cloud) {
 		<-stop
-		klog.V(3).Infof("received cloud provider termination signal")
+		klog.V(3).InfoS("received cloud provider termination signal")
 		provider.stop()
 	}(c)
 
-	klog.Infof("proxmox initialized")
+	klog.InfoS("proxmox initialized")
 }
 
 // LoadBalancer returns a balancer interface.

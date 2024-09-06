@@ -44,7 +44,8 @@ import (
 func main() {
 	ccmOptions, err := options.NewCloudControllerManagerOptions()
 	if err != nil {
-		klog.Fatalf("unable to initialize command options: %v", err)
+		klog.ErrorS(err, "unable to initialize command options")
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	fss := cliflag.NamedFlagSets{}
@@ -53,7 +54,8 @@ func main() {
 	command.Flags().VisitAll(func(flag *pflag.Flag) {
 		if flag.Name == "cloud-provider" {
 			if err := flag.Value.Set(proxmox.ProviderName); err != nil {
-				klog.Fatalf("unable to set cloud-provider flag value: %s", err)
+				klog.ErrorS(err, "unable to set cloud-provider flag value")
+				klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 			}
 		}
 	})
@@ -68,18 +70,21 @@ func cloudInitializer(config *config.CompletedConfig) cloudprovider.Interface {
 	// initialize cloud provider with the cloud provider name and config file provided
 	cloud, err := cloudprovider.InitCloudProvider(cloudConfig.Name, cloudConfig.CloudConfigFile)
 	if err != nil {
-		klog.Fatalf("Cloud provider could not be initialized: %v", err)
+		klog.ErrorS(err, "Cloud provider could not be initialized")
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	if cloud == nil {
-		klog.Fatalf("Cloud provider is nil")
+		klog.InfoS("Cloud provider is nil")
+		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	if !cloud.HasClusterID() {
 		if config.ComponentConfig.KubeCloudShared.AllowUntaggedCloud {
-			klog.Warning("detected a cluster without a ClusterID.  A ClusterID will be required in the future.  Please tag your cluster to avoid any future issues")
+			klog.InfoS("detected a cluster without a ClusterID. A ClusterID will be required in the future. Please tag your cluster to avoid any future issues")
 		} else {
-			klog.Fatalf("no ClusterID found.  A ClusterID is required for the cloud provider to function properly.  This check can be bypassed by setting the allow-untagged-cloud option")
+			klog.InfoS("no ClusterID found. A ClusterID is required for the cloud provider to function properly. This check can be bypassed by setting the allow-untagged-cloud option")
+			klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 		}
 	}
 

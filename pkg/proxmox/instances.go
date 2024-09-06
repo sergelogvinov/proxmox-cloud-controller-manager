@@ -45,10 +45,10 @@ func newInstances(client *cluster.Cluster) *instances {
 // InstanceExists returns true if the instance for the given node exists according to the cloud provider.
 // Use the node.name or node.spec.providerID field to find the node in the cloud provider.
 func (i *instances) InstanceExists(_ context.Context, node *v1.Node) (bool, error) {
-	klog.V(4).Info("instances.InstanceExists() called node: ", node.Name)
+	klog.V(4).InfoS("instances.InstanceExists() called", "node", klog.KRef("", node.Name))
 
 	if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
-		klog.V(4).Infof("instances.InstanceExists() node %s has providerID: %s, omitting unmanaged node", node.Name, node.Spec.ProviderID)
+		klog.V(4).InfoS("instances.InstanceExists() omitting unmanaged node", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
 
 		return true, nil
 	}
@@ -56,7 +56,7 @@ func (i *instances) InstanceExists(_ context.Context, node *v1.Node) (bool, erro
 	_, _, err := i.getInstance(node)
 	if err != nil {
 		if err == cloudprovider.InstanceNotFound {
-			klog.V(4).Infof("instances.InstanceExists() instance %s not found", node.Name)
+			klog.V(4).InfoS("instances.InstanceExists() instance not found", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
 
 			return false, nil
 		}
@@ -70,24 +70,24 @@ func (i *instances) InstanceExists(_ context.Context, node *v1.Node) (bool, erro
 // InstanceShutdown returns true if the instance is shutdown according to the cloud provider.
 // Use the node.name or node.spec.providerID field to find the node in the cloud provider.
 func (i *instances) InstanceShutdown(_ context.Context, node *v1.Node) (bool, error) {
-	klog.V(4).Info("instances.InstanceShutdown() called, node: ", node.Name)
+	klog.V(4).InfoS("instances.InstanceShutdown() called", "node", klog.KRef("", node.Name))
 
 	if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
-		klog.V(4).Infof("instances.InstanceShutdown() node %s has foreign providerID: %s, skipped", node.Name, node.Spec.ProviderID)
+		klog.V(4).InfoS("instances.InstanceShutdown() omitting unmanaged node", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
 
 		return false, nil
 	}
 
 	vmr, region, err := provider.ParseProviderID(node.Spec.ProviderID)
 	if err != nil {
-		klog.Errorf("instances.InstanceShutdown() failed to parse providerID %s: %v", node.Spec.ProviderID, err)
+		klog.ErrorS(err, "instances.InstanceShutdown() failed to parse providerID", "providerID", node.Spec.ProviderID)
 
 		return false, nil
 	}
 
 	px, err := i.c.GetProxmoxCluster(region)
 	if err != nil {
-		klog.Errorf("instances.InstanceShutdown() failed to get Proxmox cluster: %v", err)
+		klog.ErrorS(err, "instances.InstanceShutdown() failed to get Proxmox cluster", "region", region)
 
 		return false, nil
 	}
@@ -108,7 +108,7 @@ func (i *instances) InstanceShutdown(_ context.Context, node *v1.Node) (bool, er
 // translated into specific fields in the Node object on registration.
 // Use the node.name or node.spec.providerID field to find the node in the cloud provider.
 func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudprovider.InstanceMetadata, error) {
-	klog.V(4).Info("instances.InstanceMetadata() called, node: ", node.Name)
+	klog.V(4).InfoS("instances.InstanceMetadata() called", "node", klog.KRef("", node.Name))
 
 	if providedIP, ok := node.ObjectMeta.Annotations[cloudproviderapi.AnnotationAlphaProvidedIPAddr]; ok {
 		var (
@@ -119,14 +119,14 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 
 		providerID := node.Spec.ProviderID
 		if providerID == "" {
-			klog.V(4).Infof("instances.InstanceMetadata() - trying to find providerID for node %s", node.Name)
+			klog.V(4).InfoS("instances.InstanceMetadata() empty providerID, trying find by Name", "node", klog.KObj(node))
 
 			vmRef, region, err = i.c.FindVMByName(node.Name)
 			if err != nil {
 				return nil, fmt.Errorf("instances.InstanceMetadata() - failed to find instance by name %s: %v, skipped", node.Name, err)
 			}
 		} else if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
-			klog.V(4).Infof("instances.InstanceMetadata() node %s has foreign providerID: %s, skipped", node.Name, node.Spec.ProviderID)
+			klog.V(4).InfoS("instances.InstanceMetadata() omitting unmanaged node", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
 
 			return &cloudprovider.InstanceMetadata{}, nil
 		}
@@ -160,7 +160,7 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 		}, nil
 	}
 
-	klog.Infof("instances.InstanceMetadata() is kubelet has --cloud-provider=external on the node %s?", node.Name)
+	klog.InfoS("instances.InstanceMetadata() is kubelet has args: --cloud-provider=external on the node?", node, klog.KRef("", node.Name))
 
 	return &cloudprovider.InstanceMetadata{}, nil
 }
