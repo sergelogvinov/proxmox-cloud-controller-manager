@@ -48,6 +48,12 @@ func newInstances(client *cluster.Cluster) *instances {
 func (i *instances) InstanceExists(_ context.Context, node *v1.Node) (bool, error) {
 	klog.V(4).InfoS("instances.InstanceExists() called", "node", klog.KRef("", node.Name))
 
+	if node.Spec.ProviderID == "" {
+		klog.V(4).InfoS("instances.InstanceExists() empty providerID, omitting unmanaged node", "node", klog.KObj(node))
+
+		return true, nil
+	}
+
 	if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
 		klog.V(4).InfoS("instances.InstanceExists() omitting unmanaged node", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
 
@@ -72,6 +78,12 @@ func (i *instances) InstanceExists(_ context.Context, node *v1.Node) (bool, erro
 // Use the node.name or node.spec.providerID field to find the node in the cloud provider.
 func (i *instances) InstanceShutdown(_ context.Context, node *v1.Node) (bool, error) {
 	klog.V(4).InfoS("instances.InstanceShutdown() called", "node", klog.KRef("", node.Name))
+
+	if node.Spec.ProviderID == "" {
+		klog.V(4).InfoS("instances.InstanceShutdown() empty providerID, omitting unmanaged node", "node", klog.KObj(node))
+
+		return false, nil
+	}
 
 	if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
 		klog.V(4).InfoS("instances.InstanceShutdown() omitting unmanaged node", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
@@ -122,13 +134,20 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 
 		providerID := node.Spec.ProviderID
 		if providerID == "" {
-			klog.V(4).InfoS("instances.InstanceMetadata() empty providerID, trying find by Name", "node", klog.KObj(node))
+			uuid := node.Status.NodeInfo.SystemUUID
+
+			klog.V(4).InfoS("instances.InstanceMetadata() empty providerID, trying find node", "node", klog.KObj(node), "uuid", uuid)
 
 			mc := metrics.NewMetricContext("findVmByName")
 
 			vmRef, region, err = i.c.FindVMByName(node.Name)
 			if mc.ObserveRequest(err) != nil {
-				return nil, fmt.Errorf("instances.InstanceMetadata() - failed to find instance by name %s: %v, skipped", node.Name, err)
+				mc := metrics.NewMetricContext("findVmByUUID")
+
+				vmRef, region, err = i.c.FindVMByUUID(uuid)
+				if mc.ObserveRequest(err) != nil {
+					return nil, fmt.Errorf("instances.InstanceMetadata() - failed to find instance by name/uuid %s: %v, skipped", node.Name, err)
+				}
 			}
 		} else if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
 			klog.V(4).InfoS("instances.InstanceMetadata() omitting unmanaged node", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
