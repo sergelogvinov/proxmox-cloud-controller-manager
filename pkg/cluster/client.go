@@ -19,8 +19,10 @@ package cluster
 
 import (
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -106,4 +108,68 @@ func (c *Cluster) FindVMByName(name string) (*pxapi.VmRef, string, error) {
 	}
 
 	return nil, "", fmt.Errorf("vm '%s' not found", name)
+}
+
+// FindVMByUUID find a VM by uuid in all Proxmox clusters.
+func (c *Cluster) FindVMByUUID(uuid string) (*pxapi.VmRef, string, error) {
+	for region, px := range c.proxmox {
+		vms, err := px.GetResourceList("vm")
+		if err != nil {
+			return nil, "", fmt.Errorf("error get resources %v", err)
+		}
+
+		for vmii := range vms {
+			vm, ok := vms[vmii].(map[string]interface{})
+			if !ok {
+				return nil, "", fmt.Errorf("failed to cast response to map, vm: %v", vm)
+			}
+
+			if vm["type"].(string) != "qemu" {
+				continue
+			}
+
+			vmr := pxapi.NewVmRef(int(vm["vmid"].(float64)))
+			vmr.SetNode(vm["node"].(string))
+			vmr.SetVmType("qemu")
+
+			config, err := px.GetVmConfig(vmr)
+			if err != nil {
+				return nil, "", err
+			}
+
+			if config["smbios1"] != nil {
+				if c.getUUID(config["smbios1"].(string)) == uuid {
+					return vmr, region, nil
+				}
+			}
+		}
+	}
+
+	return nil, "", fmt.Errorf("vm with uuid '%s' not found", uuid)
+}
+
+func (c *Cluster) getUUID(smbios string) string {
+	for _, l := range strings.Split(smbios, ",") {
+		if l == "" || l == "base64=1" {
+			continue
+		}
+
+		parsedParameter, err := url.ParseQuery(l)
+		if err != nil {
+			return ""
+		}
+
+		for k, v := range parsedParameter {
+			if k == "uuid" {
+				decodedString, err := base64.StdEncoding.DecodeString(v[0])
+				if err != nil {
+					decodedString = []byte(v[0])
+				}
+
+				return string(decodedString)
+			}
+		}
+	}
+
+	return ""
 }
