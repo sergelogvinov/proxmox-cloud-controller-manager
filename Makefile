@@ -70,7 +70,7 @@ build: ## Build
 .PHONY: run
 run: build ## Run
 	./bin/proxmox-cloud-controller-manager-$(ARCH) --v=5 --kubeconfig=kubeconfig --cloud-config=proxmox-config.yaml --controllers=cloud-node,cloud-node-lifecycle \
-		--use-service-account-credentials --leader-elect=false --bind-address=127.0.0.1
+		--use-service-account-credentials --leader-elect=false --bind-address=127.0.0.1 --authorization-always-allow-paths=/healthz,/livez,/readyz,/metrics
 
 .PHONY: lint
 lint: ## Lint Code

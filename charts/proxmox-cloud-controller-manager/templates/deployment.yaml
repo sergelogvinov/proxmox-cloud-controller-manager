@@ -67,6 +67,7 @@ spec:
             - --leader-elect-resource-name=cloud-controller-manager-proxmox
             - --use-service-account-credentials
             - --secure-port=10258
+            - --authorization-always-allow-paths=/healthz,/livez,/readyz,/metrics
           {{- with .Values.extraArgs }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
