@@ -24,6 +24,7 @@ import (
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 
 	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+	metrics "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/metrics"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
 
 	v1 "k8s.io/api/core/v1"
@@ -53,8 +54,8 @@ func (i *instances) InstanceExists(_ context.Context, node *v1.Node) (bool, erro
 		return true, nil
 	}
 
-	_, _, err := i.getInstance(node)
-	if err != nil {
+	mc := metrics.NewMetricContext("getVmInfo")
+	if _, _, err := i.getInstance(node); mc.ObserveRequest(err) != nil {
 		if err == cloudprovider.InstanceNotFound {
 			klog.V(4).InfoS("instances.InstanceExists() instance not found", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
 
@@ -92,8 +93,10 @@ func (i *instances) InstanceShutdown(_ context.Context, node *v1.Node) (bool, er
 		return false, nil
 	}
 
+	mc := metrics.NewMetricContext("getVmState")
+
 	vmState, err := px.GetVmState(vmr)
-	if err != nil {
+	if mc.ObserveRequest(err) != nil {
 		return false, err
 	}
 
@@ -121,8 +124,10 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 		if providerID == "" {
 			klog.V(4).InfoS("instances.InstanceMetadata() empty providerID, trying find by Name", "node", klog.KObj(node))
 
+			mc := metrics.NewMetricContext("findVmByName")
+
 			vmRef, region, err = i.c.FindVMByName(node.Name)
-			if err != nil {
+			if mc.ObserveRequest(err) != nil {
 				return nil, fmt.Errorf("instances.InstanceMetadata() - failed to find instance by name %s: %v, skipped", node.Name, err)
 			}
 		} else if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
@@ -132,8 +137,10 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 		}
 
 		if vmRef == nil {
+			mc := metrics.NewMetricContext("getVmInfo")
+
 			vmRef, region, err = i.getInstance(node)
-			if err != nil {
+			if mc.ObserveRequest(err) != nil {
 				return nil, err
 			}
 		}
@@ -176,8 +183,10 @@ func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
 		return nil, "", fmt.Errorf("instances.getInstance() error: %v", err)
 	}
 
+	mc := metrics.NewMetricContext("getVmInfo")
+
 	vmInfo, err := px.GetVmInfo(vm)
-	if err != nil {
+	if mc.ObserveRequest(err) != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return nil, "", cloudprovider.InstanceNotFound
 		}
@@ -200,8 +209,10 @@ func (i *instances) getInstanceType(vmRef *pxapi.VmRef, region string) (string, 
 		return "", err
 	}
 
+	mc := metrics.NewMetricContext("getVmInfo")
+
 	vmInfo, err := px.GetVmInfo(vmRef)
-	if err != nil {
+	if mc.ObserveRequest(err) != nil {
 		return "", err
 	}
 
