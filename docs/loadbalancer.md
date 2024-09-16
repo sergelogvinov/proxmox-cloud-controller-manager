@@ -41,10 +41,10 @@ kubectl apply -f proxmox-service.yaml
 
 Second, we need to deploy proxmox CCM with sidecar load balancer.
 Haproxy will resolve the `proxmox.kube-system.svc.cluster.local` service and uses IPs from the endpoints to distribute traffic.
-Proxmox CCM will use the `proxmox.domain.com` domain to connect to the proxmox cluster wich is resolved to the load balancer IP (127.0.0.1).
+Proxmox CCM will use the `proxmox.domain.com` domain to connect to the proxmox cluster which is resolved to the load balancer IP (127.0.0.1).
 
 ```yaml
-# Helm Chart values
+# CCM helm chart values
 
 config:
   clusters:

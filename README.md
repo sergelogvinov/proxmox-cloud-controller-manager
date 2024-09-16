@@ -12,8 +12,8 @@ Originally, it was designed to work with [Talos CCM](https://github.com/siderola
 The CCM does a few things: it initialises new nodes, applies common labels to them, and removes them when they're deleted. It also supports multiple clusters, meaning you can have one kubernetes cluster across multiple Proxmox clusters.
 
 The basic definitions:
-* kubernetes `region` is a Proxmox cluster `clusters[].region`
-* kubernetes `zone` is a hypervisor host machine name
+* kubernetes label `topology.kubernetes.io/region` is a Proxmox cluster `clusters[].region`
+* kubernetes label `topology.kubernetes.io/zone` is a hypervisor host machine name
 
 This makes it possible for me to use pods affinity/anti-affinity.
 
@@ -24,8 +24,10 @@ This makes it possible for me to use pods affinity/anti-affinity.
 clusters:
   - url: https://cluster-api-1.exmple.com:8006/api2/json
     insecure: false
+    # Proxox auth token
     token_id: "user!token-id"
     token_secret: "secret"
+    # Uniq region name
     region: cluster-1
   - url: https://cluster-api-2.exmple.com:8006/api2/json
     insecure: false
@@ -42,12 +44,18 @@ kind: Node
 metadata:
   labels:
     ...
+    # Type generated base on CPU and RAM
     node.kubernetes.io/instance-type: 2VCPU-2GB
+    # Proxmox cluster name as in the config
     topology.kubernetes.io/region: cluster-1
+    # Proxmox hypervisor host machine name
     topology.kubernetes.io/zone: pve-node-1
   name: worker-1
 spec:
   ...
+  # providerID - magic string:
+  #   cluster-1 - cluster name as in the config
+  #   123 - Proxmox VM ID
   providerID: proxmox://cluster-1/123
 status:
   addresses:
@@ -57,79 +65,19 @@ status:
     type: Hostname
 ```
 
-# Install
+## Install
 
-## Create a token
+See [Install](docs/install.md) for installation instructions.
 
-Official [documentation](https://pve.proxmox.com/wiki/User_Management)
+## Controllers
 
-```shell
-# Create role CCM
-pveum role add CCM -privs "VM.Audit"
-# Create user and grant permissions
-pveum user add kubernetes@pve
-pveum aclmod / -user kubernetes@pve -role CCM
-pveum user token add kubernetes@pve ccm -privsep 0
-```
+Support controllers:
 
-## Deploy CCM
-
-Create the proxmox credentials
-
-```yaml
-# config.yaml
-clusters:
-  - url: https://cluster-api-1.exmple.com:8006/api2/json
-    insecure: false
-    token_id: "kubernetes@pve!ccm"
-    token_secret: "secret"
-    region: cluster-1
-```
-
-Upload it to the kubernetes:
-
-```shell
-kubectl -n kube-system create secret generic proxmox-cloud-controller-manager --from-file=config.yaml
-```
-
-### Method 1: kubectl
-
-Deploy Proxmox CCM with `cloud-node,cloud-node-lifecycle` controllers
-
-```shell
-kubectl apply -f https://raw.githubusercontent.com/sergelogvinov/proxmox-cloud-controller-manager/main/docs/deploy/cloud-controller-manager.yml
-```
-
-Deploy Proxmox CCM with `cloud-node-lifecycle` controller (for Talos)
-
-```shell
-kubectl apply -f https://raw.githubusercontent.com/sergelogvinov/proxmox-cloud-controller-manager/main/docs/deploy/cloud-controller-manager-talos.yml
-```
-
-### Method 2: helm chart
-
-Create the config file:
-
-```yaml
-# proxmox-ccm.yaml
-config:
-  clusters:
-    - url: https://cluster-api-1.exmple.com:8006/api2/json
-      insecure: false
-      token_id: "kubernetes@pve!ccm"
-      token_secret: "secret"
-      region: cluster-1
-```
-
-Deploy Proxmox CCM
-
-```shell
-helm upgrade -i --namespace=kube-system -f proxmox-ccm.yaml \
-    proxmox-cloud-controller-manager \
-    oci://ghcr.io/sergelogvinov/charts/proxmox-cloud-controller-manager
-```
-
-More options you can find [here](charts/proxmox-cloud-controller-manager)
+* cloud-node
+  * Updates node resource.
+  * Assigns labels and taints based on Proxmox VM configuration.
+* cloud-node-lifecycle
+  * Cleans up node resource when Proxmox VM is deleted.
 
 ## Contributing
 
