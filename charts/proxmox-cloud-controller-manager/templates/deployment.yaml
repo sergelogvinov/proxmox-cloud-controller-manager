@@ -71,10 +71,14 @@ spec:
           {{- with .Values.extraArgs }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          ports:
+            - name: metrics
+              containerPort: 10258
+              protocol: TCP
           livenessProbe:
             httpGet:
               path: /healthz
-              port: 10258
+              port: metrics
               scheme: HTTPS
             initialDelaySeconds: 20
             periodSeconds: 30
