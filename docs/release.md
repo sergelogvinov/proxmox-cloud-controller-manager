@@ -1,4 +1,4 @@
-# Make relese
+# Make release
 
 ```shell
 git checkout -b release-0.0.2
