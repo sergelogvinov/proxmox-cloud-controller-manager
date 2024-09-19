@@ -1,8 +1,14 @@
 # proxmox-cloud-controller-manager
 
-![Version: 0.2.5](https://img.shields.io/badge/Version-0.2.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.5.0](https://img.shields.io/badge/AppVersion-v0.5.0-informational?style=flat-square)
+![Version: 0.2.6](https://img.shields.io/badge/Version-0.2.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.5.0](https://img.shields.io/badge/AppVersion-v0.5.0-informational?style=flat-square)
 
-A Helm chart for Kubernetes
+Cloud Controller Manager plugin for Proxmox
+
+The Cloud Controller Manager (CCM) is responsible for managing node resources in cloud-based Kubernetes environments.
+
+Key functions of the Cloud Controller Manager:
+- `Node Management`: It manages nodes by initializing new nodes when they join the cluster (e.g., during scaling up) and removing nodes when they are no longer needed (e.g., during scaling down).
+- `Cloud-Specific Operations`: The CCM ensures that the cloud provider's API is integrated into the Kubernetes cluster to control and automate tasks like load balancing, storage provisioning, and node lifecycle management.
 
 **Homepage:** <https://github.com/sergelogvinov/proxmox-cloud-controller-manager>
 
@@ -16,7 +22,18 @@ A Helm chart for Kubernetes
 
 * <https://github.com/sergelogvinov/proxmox-cloud-controller-manager>
 
-Example:
+## Proxmox permissions
+
+```shell
+# Create role CCM
+pveum role add CCM -privs "VM.Audit"
+# Create user and grant permissions
+pveum user add kubernetes@pve
+pveum aclmod / -user kubernetes@pve -role CCM
+pveum user token add kubernetes@pve ccm -privsep 0
+```
+
+## Helm values example
 
 ```yaml
 # proxmox-ccm.yaml
@@ -51,7 +68,7 @@ Deploy chart:
 
 ```shell
 helm upgrade -i --namespace=kube-system -f proxmox-ccm.yaml \
-		proxmox-cloud-controller-manager charts/proxmox-cloud-controller-manager
+    proxmox-cloud-controller-manager oci://ghcr.io/sergelogvinov/charts/proxmox-cloud-controller-manager
 ```
 
 ## Values
