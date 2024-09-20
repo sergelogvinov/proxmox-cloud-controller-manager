@@ -21,7 +21,8 @@ TESTARGS ?= "-v"
 
 BUILD_ARGS := --platform=$(PLATFORM)
 ifeq ($(PUSH),true)
-BUILD_ARGS += --push=$(PUSH) --output type=image,annotation-index.org.opencontainers.image.source="https://github.com/$(USERNAME)/$(PROJECT)"
+BUILD_ARGS += --push=$(PUSH)
+BUILD_ARGS += --output type=image,annotation-index.org.opencontainers.image.source="https://github.com/$(USERNAME)/$(PROJECT)",annotation-index.org.opencontainers.image.description="Proxmox VE CCM for Kubernetes"
 else
 BUILD_ARGS += --output type=docker
 endif
