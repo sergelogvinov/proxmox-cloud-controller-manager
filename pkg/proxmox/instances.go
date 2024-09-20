@@ -235,6 +235,10 @@ func (i *instances) getInstanceType(vmRef *pxapi.VmRef, region string) (string, 
 		return "", err
 	}
 
+	if vmInfo["maxcpu"] == nil || vmInfo["maxmem"] == nil {
+		return "", fmt.Errorf("instances.getInstanceType() failed to get instance type")
+	}
+
 	return fmt.Sprintf("%.0fVCPU-%.0fGB",
 		vmInfo["maxcpu"].(float64),
 		vmInfo["maxmem"].(float64)/1024/1024/1024), nil
