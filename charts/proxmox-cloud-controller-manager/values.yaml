@@ -133,7 +133,7 @@ resources:
 # It allows to use CCM without CNI plugins.
 useDaemonSet: false
 
-# -- Deployment update stategy type.
+# -- Deployment update strategy type.
 # ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment
 updateStrategy:
   type: RollingUpdate
