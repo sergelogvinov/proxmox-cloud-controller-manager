@@ -1,4 +1,18 @@
 
+<a name="v0.5.1"></a>
+## [v0.5.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.5.0...v0.5.1) (2024-09-20)
+
+Welcome to the v0.5.1 release of Kubernetes cloud controller manager for Proxmox!
+
+### Bug Fixes
+
+- instance type
+
+### Changelog
+
+* 10f3e36 fix: instance type
+* 2b64352 chore(chart): update readme
+
 <a name="v0.5.0"></a>
 ## [v0.5.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.4.2...v0.5.0) (2024-09-16)
 
@@ -11,6 +25,7 @@ Welcome to the v0.5.0 release of Kubernetes cloud controller manager for Proxmox
 
 ### Changelog
 
+* 63b6907 chore: release v0.5.0
 * 4d79e4e docs: install instruction
 * 5876cd4 feat: find node by uuid
 * b81ad14 feat: prometheus metrics
