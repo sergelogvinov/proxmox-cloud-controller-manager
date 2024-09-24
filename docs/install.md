@@ -9,6 +9,25 @@ Assigns labels and taints based on Proxmox VM configuration.
 
 `cloud-node-lifecycle` - detects node deletion on Proxmox side and removes them from the cluster.
 
+## Requirements
+
+You need to set `--cloud-provider=external` in the kubelet argument for all nodes in the cluster.
+The flag informs the kubelet to offload cloud-specific responsibilities to this external component like Proxmox CCM.
+
+```shell
+kubelet --cloud-provider=external
+```
+
+Otherwise, kubelet will attempt to manage the node's lifecycle by itself, which can cause issues in environments using an external Cloud Controller Manager (CCM).
+
+If your node has __multiple IP addresses__, you may need to set the `--node-ip` flag in the kubelet arguments to specify which IP address the kubelet should use. This ensures that the correct IP address is used for communication between the node and other components in the Kubernetes cluster, especially in environments where multiple network interfaces or IP addresses are present.
+
+```shell
+kubelet --node-ip=${IP}
+```
+
+IP can be single or comma-separated list of two IPs (dual stack).
+
 ## Create a Proxmox token
 
 Official [documentation](https://pve.proxmox.com/wiki/User_Management)
