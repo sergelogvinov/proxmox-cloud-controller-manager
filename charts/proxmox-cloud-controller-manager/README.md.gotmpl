@@ -20,6 +20,10 @@ Key functions of the Cloud Controller Manager:
 
 {{ template "chart.requirementsSection" . }}
 
+## Requirements
+
+You need to set `--cloud-provider=external` in the kubelet argument for all nodes in the cluster.
+
 ## Proxmox permissions
 
 ```shell

@@ -1,6 +1,6 @@
 # proxmox-cloud-controller-manager
 
-![Version: 0.2.7](https://img.shields.io/badge/Version-0.2.7-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.5.1](https://img.shields.io/badge/AppVersion-v0.5.1-informational?style=flat-square)
+![Version: 0.2.8](https://img.shields.io/badge/Version-0.2.8-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.5.1](https://img.shields.io/badge/AppVersion-v0.5.1-informational?style=flat-square)
 
 Cloud Controller Manager plugin for Proxmox
 
@@ -21,6 +21,10 @@ Key functions of the Cloud Controller Manager:
 ## Source Code
 
 * <https://github.com/sergelogvinov/proxmox-cloud-controller-manager>
+
+## Requirements
+
+You need to set `--cloud-provider=external` in the kubelet argument for all nodes in the cluster.
 
 ## Proxmox permissions
 
