@@ -20,13 +20,27 @@ kubelet --cloud-provider=external
 
 Otherwise, kubelet will attempt to manage the node's lifecycle by itself, which can cause issues in environments using an external Cloud Controller Manager (CCM).
 
-If your node has __multiple IP addresses__, you may need to set the `--node-ip` flag in the kubelet arguments to specify which IP address the kubelet should use. This ensures that the correct IP address is used for communication between the node and other components in the Kubernetes cluster, especially in environments where multiple network interfaces or IP addresses are present.
+### Optional
 
 ```shell
+# ${IP} can be single or comma-separated list of two IPs (dual stack).
 kubelet --node-ip=${IP}
 ```
+If your node has __multiple IP addresses__, you may need to set the `--node-ip` flag in the kubelet arguments to specify which IP address the kubelet should use.
+This ensures that the correct IP address is used for communication between the node and other components in the Kubernetes cluster, especially in environments where multiple network interfaces or IP addresses are present.
 
-IP can be single or comma-separated list of two IPs (dual stack).
+```shell
+# ${ID} has format proxmox://$REGION/$VMID.
+kubelet --provider-id=${ID}
+```
+If CCM cannot define VMID, you may need to set the `--provider-id` flag in the kubelet arguments to specify the VM ID in Proxmox. This ensures that the CCM can manage the node by VM ID.
+
+```shell
+# ${NODENAME} is the name of the node.
+kubelet --hostname-override=${NODENAME}
+```
+If your node has a different hostname than the one registered in the cluster, you may need to set the `--hostname-override` flag in the kubelet arguments to specify the correct hostname.
+
 
 ## Create a Proxmox token
 
@@ -160,3 +174,23 @@ helm upgrade -i --namespace=kube-system -f proxmox-ccm.yaml \
 This optional setup to improve the Proxmox API availability.
 
 See [load balancer](loadbalancer.md) for installation instructions.
+
+## Troubleshooting
+
+How `kubelet` works with flag `cloud-provider=external`:
+
+1. kubelet join the cluster and send the `Node` object to the API server.
+Node object has values:
+    * `node.cloudprovider.kubernetes.io/uninitialized` taint.
+    * `alpha.kubernetes.io/provided-node-ip` annotation with the node IP.
+    * `nodeInfo` field with system information.
+2. CCM detects the new node and sends a request to the Proxmox API to get the VM configuration. Like VMID, hostname, etc.
+3. CCM updates the `Node` object with labels and taints based on the VM configuration.
+4. CCM removes the `node.cloudprovider.kubernetes.io/uninitialized` taint.
+
+If `kubelet` does not have `cloud-provider=external` flag, kubelet will expect that no external CCM is running and will try to manage the node lifecycle by itself.
+This can cause issues with Proxmox CCM.
+So, CCM will skip the node and will not update the `Node` object.
+
+If you modify the `kubelet` flags, it's recommended to check all workloads in the cluster.
+Please __delete__ the node resource first, and __restart__ the kubelet.
