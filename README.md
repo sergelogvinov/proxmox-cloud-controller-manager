@@ -79,6 +79,10 @@ Support controllers:
 * cloud-node-lifecycle
   * Cleans up node resource when Proxmox VM is deleted.
 
+## FAQ
+
+See [FAQ](docs/faq.md) for answers to common questions.
+
 ## Contributing
 
 Contributions are welcomed and appreciated!

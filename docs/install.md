@@ -185,7 +185,7 @@ Node object has values:
     * `alpha.kubernetes.io/provided-node-ip` annotation with the node IP.
     * `nodeInfo` field with system information.
 2. CCM detects the new node and sends a request to the Proxmox API to get the VM configuration. Like VMID, hostname, etc.
-3. CCM updates the `Node` object with labels and taints based on the VM configuration.
+3. CCM updates the `Node` object with labels, taints and `providerID` field. The `providerID` is immutable and has the format `proxmox://$REGION/$VMID`, it cannot be changed after the first update.
 4. CCM removes the `node.cloudprovider.kubernetes.io/uninitialized` taint.
 
 If `kubelet` does not have `cloud-provider=external` flag, kubelet will expect that no external CCM is running and will try to manage the node lifecycle by itself.
@@ -194,3 +194,12 @@ So, CCM will skip the node and will not update the `Node` object.
 
 If you modify the `kubelet` flags, it's recommended to check all workloads in the cluster.
 Please __delete__ the node resource first, and __restart__ the kubelet.
+
+The steps to troubleshoot the Proxmox CCM:
+1. scale down the CCM deployment to 1 replica.
+2. set log level to `--v=5` in the deployment.
+3. check the logs
+4. check kubelet flag `--cloud-provider=external`, delete the node resource and restart the kubelet.
+5. check the logs
+6. wait for 1 minute. If CCM cannot reach the Proxmox API, it will log the error.
+7. check tains, labels, and providerID in the `Node` object.
