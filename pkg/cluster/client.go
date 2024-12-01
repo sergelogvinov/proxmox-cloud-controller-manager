@@ -124,12 +124,12 @@ func (c *Cluster) FindVMByUUID(uuid string) (*pxapi.VmRef, string, error) {
 				return nil, "", fmt.Errorf("failed to cast response to map, vm: %v", vm)
 			}
 
-			if vm["type"].(string) != "qemu" {
+			if vm["type"].(string) != "qemu" { //nolint:errcheck
 				continue
 			}
 
-			vmr := pxapi.NewVmRef(int(vm["vmid"].(float64)))
-			vmr.SetNode(vm["node"].(string))
+			vmr := pxapi.NewVmRef(int(vm["vmid"].(float64))) //nolint:errcheck
+			vmr.SetNode(vm["node"].(string))                 //nolint:errcheck
 			vmr.SetVmType("qemu")
 
 			config, err := px.GetVmConfig(vmr)
@@ -138,7 +138,7 @@ func (c *Cluster) FindVMByUUID(uuid string) (*pxapi.VmRef, string, error) {
 			}
 
 			if config["smbios1"] != nil {
-				if c.getUUID(config["smbios1"].(string)) == uuid {
+				if c.getUUID(config["smbios1"].(string)) == uuid { //nolint:errcheck
 					return vmr, region, nil
 				}
 			}

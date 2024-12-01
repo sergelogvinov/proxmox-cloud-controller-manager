@@ -112,7 +112,7 @@ func (i *instances) InstanceShutdown(_ context.Context, node *v1.Node) (bool, er
 		return false, err
 	}
 
-	if vmState["status"].(string) == "stopped" {
+	if vmState["status"].(string) == "stopped" { //nolint:errcheck
 		return true, nil
 	}
 
@@ -213,8 +213,8 @@ func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
 		return nil, "", err
 	}
 
-	if vmInfo["name"] != nil && vmInfo["name"].(string) != node.Name {
-		return nil, "", fmt.Errorf("instances.getInstance() vm.name(%s) != node.name(%s)", vmInfo["name"].(string), node.Name)
+	if vmInfo["name"] != nil && vmInfo["name"].(string) != node.Name { //nolint:errcheck
+		return nil, "", fmt.Errorf("instances.getInstance() vm.name(%s) != node.name(%s)", vmInfo["name"].(string), node.Name) //nolint:errcheck
 	}
 
 	klog.V(5).Infof("instances.getInstance() vmInfo %+v", vmInfo)
@@ -240,6 +240,6 @@ func (i *instances) getInstanceType(vmRef *pxapi.VmRef, region string) (string, 
 	}
 
 	return fmt.Sprintf("%.0fVCPU-%.0fGB",
-		vmInfo["maxcpu"].(float64),
-		vmInfo["maxmem"].(float64)/1024/1024/1024), nil
+		vmInfo["maxcpu"].(float64),                     //nolint:errcheck
+		vmInfo["maxmem"].(float64)/1024/1024/1024), nil //nolint:errcheck
 }
