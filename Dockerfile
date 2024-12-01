@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1.10
 ########################################
 
-FROM --platform=${BUILDPLATFORM} golang:1.23.2-alpine3.20 AS builder
+FROM --platform=${BUILDPLATFORM} golang:1.23.3-alpine3.20 AS builder
 RUN apk update && apk add --no-cache make
 ENV GO111MODULE=on
 WORKDIR /src
