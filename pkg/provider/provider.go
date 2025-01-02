@@ -38,6 +38,11 @@ func GetProviderID(region string, vmr *pxapi.VmRef) string {
 	return fmt.Sprintf("%s://%s/%d", ProviderName, region, vmr.VmId())
 }
 
+// GetProviderIDFromUUID returns the magic providerID for kubernetes node.
+func GetProviderIDFromUUID(uuid string) string {
+	return fmt.Sprintf("%s://%s", ProviderName, uuid)
+}
+
 // GetVMID returns the VM ID from the providerID.
 func GetVMID(providerID string) (int, error) {
 	if !strings.HasPrefix(providerID, ProviderName) {

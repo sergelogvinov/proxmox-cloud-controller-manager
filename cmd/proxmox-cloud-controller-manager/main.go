@@ -51,6 +51,9 @@ func main() {
 	fss := cliflag.NamedFlagSets{}
 	command := app.NewCloudControllerManagerCommand(ccmOptions, cloudInitializer, app.DefaultInitFuncConstructors, names.CCMControllerAliases(), fss, wait.NeverStop)
 
+	capiEnabled := false
+	command.Flags().BoolVar(&capiEnabled, "capi-enabled", false, "Enable CAPI mode for Proxmox cloud provider")
+
 	command.Flags().VisitAll(func(flag *pflag.Flag) {
 		if flag.Name == "cloud-provider" {
 			if err := flag.Value.Set(proxmox.ProviderName); err != nil {
