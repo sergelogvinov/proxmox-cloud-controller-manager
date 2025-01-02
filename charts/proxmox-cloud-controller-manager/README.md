@@ -77,33 +77,33 @@ helm upgrade -i --namespace=kube-system -f proxmox-ccm.yaml \
 
 ## Values
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| replicaCount | int | `1` |  |
-| image.repository | string | `"ghcr.io/sergelogvinov/proxmox-cloud-controller-manager"` | Proxmox CCM image. |
-| image.pullPolicy | string | `"IfNotPresent"` | Always or IfNotPresent |
-| image.tag | string | `""` | Overrides the image tag whose default is the chart appVersion. |
-| imagePullSecrets | list | `[]` |  |
-| nameOverride | string | `""` |  |
-| fullnameOverride | string | `""` |  |
-| extraArgs | list | `[]` | Any extra arguments for talos-cloud-controller-manager |
-| enabledControllers | list | `["cloud-node","cloud-node-lifecycle"]` | List of controllers should be enabled. Use '*' to enable all controllers. Support only `cloud-node,cloud-node-lifecycle` controllers. |
+| Key | Type | Default | Description                                                                                                                                                                    |
+|-----|------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| replicaCount | int | `1` |                                                                                                                                                                                |
+| image.repository | string | `"ghcr.io/sergelogvinov/proxmox-cloud-controller-manager"` | Proxmox CCM image.                                                                                                                                                             |
+| image.pullPolicy | string | `"IfNotPresent"` | Always or IfNotPresent                                                                                                                                                         |
+| image.tag | string | `""` | Overrides the image tag whose default is the chart appVersion.                                                                                                                 |
+| imagePullSecrets | list | `[]` |                                                                                                                                                                                |
+| nameOverride | string | `""` |                                                                                                                                                                                |
+| fullnameOverride | string | `""` |                                                                                                                                                                                |
+| extraArgs | list | `[]` | Any extra arguments for talos-cloud-controller-manager, eg --capi=true to enable cluster api compatibility.                                                                    |
+| enabledControllers | list | `["cloud-node","cloud-node-lifecycle"]` | List of controllers should be enabled. Use '*' to enable all controllers. Support only `cloud-node,cloud-node-lifecycle` controllers.                                          |
 | logVerbosityLevel | int | `2` | Log verbosity level. See https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md for description of individual verbosity levels. |
-| existingConfigSecret | string | `nil` | Proxmox cluster config stored in secrets. |
-| existingConfigSecretKey | string | `"config.yaml"` | Proxmox cluster config stored in secrets key. |
-| config | object | `{"clusters":[]}` | Proxmox cluster config. |
-| serviceAccount | object | `{"annotations":{},"create":true,"name":""}` | Pods Service Account. ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/ |
-| priorityClassName | string | `"system-cluster-critical"` | CCM pods' priorityClassName. |
-| initContainers | list | `[]` | Add additional init containers to the CCM pods. ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
-| hostAliases | list | `[]` | hostAliases Deployment pod host aliases ref: https://kubernetes.io/docs/tasks/network/customize-hosts-file-for-pods/ |
-| podAnnotations | object | `{}` | Annotations for data pods. ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/ |
-| podSecurityContext | object | `{"fsGroup":10258,"fsGroupChangePolicy":"OnRootMismatch","runAsGroup":10258,"runAsNonRoot":true,"runAsUser":10258}` | Pods Security Context. ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod |
-| securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"seccompProfile":{"type":"RuntimeDefault"}}` | Container Security Context. ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod |
-| resources | object | `{"requests":{"cpu":"10m","memory":"32Mi"}}` | Resource requests and limits. ref: https://kubernetes.io/docs/user-guide/compute-resources/ |
-| useDaemonSet | bool | `false` | Deploy CCM  in Daemonset mode. CCM will use hostNetwork. It allows to use CCM without CNI plugins. |
-| updateStrategy | object | `{"rollingUpdate":{"maxUnavailable":1},"type":"RollingUpdate"}` | Deployment update strategy type. ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment |
-| nodeSelector | object | `{}` | Node labels for data pods assignment. ref: https://kubernetes.io/docs/user-guide/node-selection/ |
-| tolerations | list | `[{"effect":"NoSchedule","key":"node-role.kubernetes.io/control-plane","operator":"Exists"},{"effect":"NoSchedule","key":"node.cloudprovider.kubernetes.io/uninitialized","operator":"Exists"}]` | Tolerations for data pods assignment. ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/ |
-| affinity | object | `{}` | Affinity for data pods assignment. ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity |
-| extraVolumes | list | `[]` | Additional volumes for Pods |
-| extraVolumeMounts | list | `[]` | Additional volume mounts for Pods |
+| existingConfigSecret | string | `nil` | Proxmox cluster config stored in secrets.                                                                                                                                      |
+| existingConfigSecretKey | string | `"config.yaml"` | Proxmox cluster config stored in secrets key.                                                                                                                                  |
+| config | object | `{"clusters":[]}` | Proxmox cluster config.                                                                                                                                                        |
+| serviceAccount | object | `{"annotations":{},"create":true,"name":""}` | Pods Service Account. ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/                                                                 |
+| priorityClassName | string | `"system-cluster-critical"` | CCM pods' priorityClassName.                                                                                                                                                   |
+| initContainers | list | `[]` | Add additional init containers to the CCM pods. ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/                                                       |
+| hostAliases | list | `[]` | hostAliases Deployment pod host aliases ref: https://kubernetes.io/docs/tasks/network/customize-hosts-file-for-pods/                                                           |
+| podAnnotations | object | `{}` | Annotations for data pods. ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/                                                                 |
+| podSecurityContext | object | `{"fsGroup":10258,"fsGroupChangePolicy":"OnRootMismatch","runAsGroup":10258,"runAsNonRoot":true,"runAsUser":10258}` | Pods Security Context. ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod                                      |
+| securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"seccompProfile":{"type":"RuntimeDefault"}}` | Container Security Context. ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod                                 |
+| resources | object | `{"requests":{"cpu":"10m","memory":"32Mi"}}` | Resource requests and limits. ref: https://kubernetes.io/docs/user-guide/compute-resources/                                                                                    |
+| useDaemonSet | bool | `false` | Deploy CCM  in Daemonset mode. CCM will use hostNetwork. It allows to use CCM without CNI plugins.                                                                             |
+| updateStrategy | object | `{"rollingUpdate":{"maxUnavailable":1},"type":"RollingUpdate"}` | Deployment update strategy type. ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment                                              |
+| nodeSelector | object | `{}` | Node labels for data pods assignment. ref: https://kubernetes.io/docs/user-guide/node-selection/                                                                               |
+| tolerations | list | `[{"effect":"NoSchedule","key":"node-role.kubernetes.io/control-plane","operator":"Exists"},{"effect":"NoSchedule","key":"node.cloudprovider.kubernetes.io/uninitialized","operator":"Exists"}]` | Tolerations for data pods assignment. ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/                                                             |
+| affinity | object | `{}` | Affinity for data pods assignment. ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity                                          |
+| extraVolumes | list | `[]` | Additional volumes for Pods                                                                                                                                                    |
+| extraVolumeMounts | list | `[]` | Additional volume mounts for Pods                                                                                                                                              |

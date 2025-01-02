@@ -65,7 +65,8 @@ func newCloud(config *cluster.ClustersConfig) (cloudprovider.Interface, error) {
 		return nil, err
 	}
 
-	instancesInterface := newInstances(client)
+	// TODO: how to inject capiEnabled flag from main.go?
+	instancesInterface := newInstances(client, false)
 
 	return &cloud{
 		client:      client,
