@@ -65,7 +65,7 @@ func newCloud(config *cluster.ClustersConfig) (cloudprovider.Interface, error) {
 		return nil, err
 	}
 
-	instancesInterface := newInstances(client)
+	instancesInterface := newInstances(client, config.Features.Provider)
 
 	return &cloud{
 		client:      client,
