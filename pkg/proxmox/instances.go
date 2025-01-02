@@ -34,12 +34,14 @@ import (
 )
 
 type instances struct {
-	c *cluster.Cluster
+	c        *cluster.Cluster
+	provider cluster.Provider
 }
 
-func newInstances(client *cluster.Cluster) *instances {
+func newInstances(client *cluster.Cluster, provider cluster.Provider) *instances {
 	return &instances{
-		c: client,
+		c:        client,
+		provider: provider,
 	}
 }
 
@@ -149,6 +151,12 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 					return nil, fmt.Errorf("instances.InstanceMetadata() - failed to find instance by name/uuid %s: %v, skipped", node.Name, err)
 				}
 			}
+
+			if i.provider == cluster.ProviderCapmox {
+				providerID = provider.GetProviderIDFromUUID(uuid)
+			} else {
+				providerID = provider.GetProviderID(region, vmRef)
+			}
 		} else if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
 			klog.V(4).InfoS("instances.InstanceMetadata() omitting unmanaged node", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
 
@@ -178,7 +186,7 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 		}
 
 		return &cloudprovider.InstanceMetadata{
-			ProviderID:    provider.GetProviderID(region, vmRef),
+			ProviderID:    providerID,
 			NodeAddresses: addresses,
 			InstanceType:  instanceType,
 			Zone:          vmRef.Node(),
@@ -192,6 +200,17 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 }
 
 func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
+	if i.provider == cluster.ProviderCapmox {
+		uuid := node.Status.NodeInfo.SystemUUID
+
+		vmRef, region, err := i.c.FindVMByUUID(uuid)
+		if err != nil {
+			return nil, "", fmt.Errorf("instances.getInstance() error: %v", err)
+		}
+
+		return vmRef, region, nil
+	}
+
 	vm, region, err := provider.ParseProviderID(node.Spec.ProviderID)
 	if err != nil {
 		return nil, "", fmt.Errorf("instances.getInstance() error: %v", err)

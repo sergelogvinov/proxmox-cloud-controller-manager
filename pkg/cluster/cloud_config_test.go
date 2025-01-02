@@ -69,7 +69,7 @@ clusters:
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 1, len(cfg.Clusters))
 
-	// Valid config with one cluster (username/password)
+	// Valid config with one cluster (username/password), implicit default provider
 	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
 clusters:
   - url: https://example.com
@@ -81,6 +81,39 @@ clusters:
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 1, len(cfg.Clusters))
+	assert.Equal(t, cluster.ProviderDefault, cfg.Features.Provider)
+
+	// Valid config with one cluster (username/password), explicit provider default
+	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
+features:
+  provider: 'default'
+clusters:
+  - url: https://example.com
+    insecure: false
+    username: "user@pam"
+    password: "secret"
+    region: cluster-1
+`))
+	assert.Nil(t, err)
+	assert.NotNil(t, cfg)
+	assert.Equal(t, 1, len(cfg.Clusters))
+	assert.Equal(t, cluster.ProviderDefault, cfg.Features.Provider)
+
+	// Valid config with one cluster (username/password), explicit provider capmox
+	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
+features:
+  provider: 'capmox'
+clusters:
+  - url: https://example.com
+    insecure: false
+    username: "user@pam"
+    password: "secret"
+    region: cluster-1
+`))
+	assert.Nil(t, err)
+	assert.NotNil(t, cfg)
+	assert.Equal(t, 1, len(cfg.Clusters))
+	assert.Equal(t, cluster.ProviderCapmox, cfg.Features.Provider)
 }
 
 func TestReadCloudConfigFromFile(t *testing.T) {
