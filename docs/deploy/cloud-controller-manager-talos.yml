@@ -5,10 +5,10 @@ kind: ServiceAccount
 metadata:
   name: proxmox-cloud-controller-manager
   labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.2.9
+    helm.sh/chart: proxmox-cloud-controller-manager-0.2.11
     app.kubernetes.io/name: proxmox-cloud-controller-manager
     app.kubernetes.io/instance: proxmox-cloud-controller-manager
-    app.kubernetes.io/version: "v0.6.0"
+    app.kubernetes.io/version: "v0.7.0"
     app.kubernetes.io/managed-by: Helm
   namespace: kube-system
 ---
@@ -18,10 +18,10 @@ kind: ClusterRole
 metadata:
   name: system:proxmox-cloud-controller-manager
   labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.2.9
+    helm.sh/chart: proxmox-cloud-controller-manager-0.2.11
     app.kubernetes.io/name: proxmox-cloud-controller-manager
     app.kubernetes.io/instance: proxmox-cloud-controller-manager
-    app.kubernetes.io/version: "v0.6.0"
+    app.kubernetes.io/version: "v0.7.0"
     app.kubernetes.io/managed-by: Helm
 rules:
 - apiGroups:
@@ -106,10 +106,10 @@ kind: Deployment
 metadata:
   name: proxmox-cloud-controller-manager
   labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.2.9
+    helm.sh/chart: proxmox-cloud-controller-manager-0.2.11
     app.kubernetes.io/name: proxmox-cloud-controller-manager
     app.kubernetes.io/instance: proxmox-cloud-controller-manager
-    app.kubernetes.io/version: "v0.6.0"
+    app.kubernetes.io/version: "v0.7.0"
     app.kubernetes.io/managed-by: Helm
   namespace: kube-system
 spec:
@@ -123,7 +123,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c69436cb1e16c36ff708b1003d3ca4c6ee6484d2524e2ba7d9b68f473acaa1ca
+        checksum/config: ce080eff0c26b50fe73bf9fcda017c8ad47c1000729fd0c555cfe3535c6d6222
       labels:
         app.kubernetes.io/name: proxmox-cloud-controller-manager
         app.kubernetes.io/instance: proxmox-cloud-controller-manager
@@ -148,7 +148,7 @@ spec:
               - ALL
             seccompProfile:
               type: RuntimeDefault
-          image: "ghcr.io/sergelogvinov/proxmox-cloud-controller-manager:v0.6.0"
+          image: "ghcr.io/sergelogvinov/proxmox-cloud-controller-manager:v0.7.0"
           imagePullPolicy: IfNotPresent
           args:
             - --v=4
