@@ -1,11 +1,25 @@
 
+<a name="v0.7.0"></a>
+## [v0.7.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.6.0...v0.7.0) (2025-01-02)
+
+Welcome to the v0.7.0 release of Kubernetes cloud controller manager for Proxmox!
+
+### Features
+
+- enable support for capmox This makes ccm compatible with cluster api and cluster api provider proxmox (capmox)
+
+### Changelog
+
+* 956a30a feat: enable support for capmox This makes ccm compatible with cluster api and cluster api provider proxmox (capmox)
+
 <a name="v0.6.0"></a>
-## [v0.6.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.5.1...v0.6.0) (2024-12-23)
+## [v0.6.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.5.1...v0.6.0) (2025-01-01)
 
 Welcome to the v0.6.0 release of Kubernetes cloud controller manager for Proxmox!
 
 ### Changelog
 
+* 63eef87 chore: release v0.6.0
 * 710dc1b chore: bump deps
 * 5ea7b73 chore: bump deps
 * 2bfb088 chore: bump deps
@@ -98,7 +112,6 @@ Welcome to the v0.4.0 release of Kubernetes cloud controller manager for Proxmox
 * de55986 fix: init provider
 * 10592d1 chore: bump deps
 * 7b73b5f refactor: move providerID to the package
-* 6f0c667 chore: release v0.3.0
 
 <a name="v0.3.0"></a>
 ## [v0.3.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.2.0...v0.3.0) (2024-01-03)
@@ -116,6 +129,7 @@ Welcome to the v0.3.0 release of Kubernetes cloud controller manager for Proxmox
 
 ### Changelog
 
+* 6f0c667 chore: release v0.3.0
 * ac2f564 feat: can use user/password
 * 41a7f8d chore: bump deps
 * 74d8c78 chore: bump deps
@@ -151,15 +165,15 @@ Welcome to the v0.2.0 release of Kubernetes cloud controller manager for Proxmox
 * dfd7c5f chore: bump deps
 * 38da18f ci: fix git tag
 * d8c6bed chore: bump deps
-* 6d79605 chore: release v0.1.1
 
 <a name="v0.1.1"></a>
-## [v0.1.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.1.0...v0.1.1) (2023-05-08)
+## [v0.1.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.1.0...v0.1.1) (2023-05-12)
 
 Welcome to the v0.1.1 release of Kubernetes cloud controller manager for Proxmox!
 
 ### Changelog
 
+* 6d79605 chore: release v0.1.1
 * f8c32e1 test: cloud config
 * c051d38 ci: build trigger
 * a1e7cd0 chore: bump deps
@@ -178,7 +192,6 @@ Welcome to the v0.1.0 release of Kubernetes cloud controller manager for Proxmox
 * b776e54 test: mock proxmox api
 * 641509b doc: helm chart readme
 * 90b66dc test: basic test
-* bf10985 chore: release v0.0.1
 
 <a name="v0.0.1"></a>
 ## v0.0.1 (2023-04-29)
@@ -191,6 +204,7 @@ Welcome to the v0.0.1 release of Kubernetes cloud controller manager for Proxmox
 
 ### Changelog
 
+* bf10985 chore: release v0.0.1
 * 0d89bf5 ci: add github checks
 * cc2dc17 refactor: proxmox cloud config
 * 850dcd4 chore: bump deps
