@@ -18,6 +18,7 @@ limitations under the License.
 package cluster
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
@@ -27,6 +28,8 @@ import (
 	"strings"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+
+	"k8s.io/klog/v2"
 )
 
 // Cluster is a Proxmox client.
@@ -53,7 +56,7 @@ func NewCluster(config *ClustersConfig, hclient *http.Client) (*Cluster, error) 
 			}
 
 			if cfg.Username != "" && cfg.Password != "" {
-				if err := client.Login(cfg.Username, cfg.Password, ""); err != nil {
+				if err := client.Login(context.Background(), cfg.Username, cfg.Password, ""); err != nil {
 					return nil, err
 				}
 			} else {
@@ -73,10 +76,21 @@ func NewCluster(config *ClustersConfig, hclient *http.Client) (*Cluster, error) 
 }
 
 // CheckClusters checks if the Proxmox connection is working.
-func (c *Cluster) CheckClusters() error {
+func (c *Cluster) CheckClusters(ctx context.Context) error {
 	for region, client := range c.proxmox {
-		if _, err := client.GetVersion(); err != nil {
+		if _, err := client.GetVersion(ctx); err != nil {
 			return fmt.Errorf("failed to initialized proxmox client in region %s, error: %v", region, err)
+		}
+
+		vms, err := client.GetVmList(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get list of VMs in region %s, error: %v", region, err)
+		}
+
+		if len(vms) > 0 {
+			klog.V(4).InfoS("Proxmox cluster has VMs", "region", region, "count", len(vms))
+		} else {
+			klog.InfoS("Proxmox cluster has no VMs, or check the account permission", "region", region)
 		}
 	}
 
@@ -93,9 +107,9 @@ func (c *Cluster) GetProxmoxCluster(region string) (*pxapi.Client, error) {
 }
 
 // FindVMByName find a VM by name in all Proxmox clusters.
-func (c *Cluster) FindVMByName(name string) (*pxapi.VmRef, string, error) {
+func (c *Cluster) FindVMByName(ctx context.Context, name string) (*pxapi.VmRef, string, error) {
 	for region, px := range c.proxmox {
-		vmr, err := px.GetVmRefByName(name)
+		vmr, err := px.GetVmRefByName(ctx, name)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				continue
@@ -111,9 +125,9 @@ func (c *Cluster) FindVMByName(name string) (*pxapi.VmRef, string, error) {
 }
 
 // FindVMByUUID find a VM by uuid in all Proxmox clusters.
-func (c *Cluster) FindVMByUUID(uuid string) (*pxapi.VmRef, string, error) {
+func (c *Cluster) FindVMByUUID(ctx context.Context, uuid string) (*pxapi.VmRef, string, error) {
 	for region, px := range c.proxmox {
-		vms, err := px.GetResourceList("vm")
+		vms, err := px.GetResourceList(ctx, "vm")
 		if err != nil {
 			return nil, "", fmt.Errorf("error get resources %v", err)
 		}
@@ -132,7 +146,7 @@ func (c *Cluster) FindVMByUUID(uuid string) (*pxapi.VmRef, string, error) {
 			vmr.SetNode(vm["node"].(string))                 //nolint:errcheck
 			vmr.SetVmType("qemu")
 
-			config, err := px.GetVmConfig(vmr)
+			config, err := px.GetVmConfig(ctx, vmr)
 			if err != nil {
 				return nil, "", err
 			}
