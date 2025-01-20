@@ -85,7 +85,7 @@ func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, 
 	c.ctx = ctx
 	c.stop = cancel
 
-	err := c.client.CheckClusters()
+	err := c.client.CheckClusters(ctx)
 	if err != nil {
 		klog.ErrorS(err, "failed to check proxmox cluster")
 	}

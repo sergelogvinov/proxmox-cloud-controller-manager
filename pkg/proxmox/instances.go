@@ -47,7 +47,7 @@ func newInstances(client *cluster.Cluster, provider cluster.Provider) *instances
 
 // InstanceExists returns true if the instance for the given node exists according to the cloud provider.
 // Use the node.name or node.spec.providerID field to find the node in the cloud provider.
-func (i *instances) InstanceExists(_ context.Context, node *v1.Node) (bool, error) {
+func (i *instances) InstanceExists(ctx context.Context, node *v1.Node) (bool, error) {
 	klog.V(4).InfoS("instances.InstanceExists() called", "node", klog.KRef("", node.Name))
 
 	if node.Spec.ProviderID == "" {
@@ -63,7 +63,7 @@ func (i *instances) InstanceExists(_ context.Context, node *v1.Node) (bool, erro
 	}
 
 	mc := metrics.NewMetricContext("getVmInfo")
-	if _, _, err := i.getInstance(node); mc.ObserveRequest(err) != nil {
+	if _, _, err := i.getInstance(ctx, node); mc.ObserveRequest(err) != nil {
 		if err == cloudprovider.InstanceNotFound {
 			klog.V(4).InfoS("instances.InstanceExists() instance not found", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
 
@@ -78,7 +78,7 @@ func (i *instances) InstanceExists(_ context.Context, node *v1.Node) (bool, erro
 
 // InstanceShutdown returns true if the instance is shutdown according to the cloud provider.
 // Use the node.name or node.spec.providerID field to find the node in the cloud provider.
-func (i *instances) InstanceShutdown(_ context.Context, node *v1.Node) (bool, error) {
+func (i *instances) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, error) {
 	klog.V(4).InfoS("instances.InstanceShutdown() called", "node", klog.KRef("", node.Name))
 
 	if node.Spec.ProviderID == "" {
@@ -109,7 +109,7 @@ func (i *instances) InstanceShutdown(_ context.Context, node *v1.Node) (bool, er
 
 	mc := metrics.NewMetricContext("getVmState")
 
-	vmState, err := px.GetVmState(vmr)
+	vmState, err := px.GetVmState(ctx, vmr)
 	if mc.ObserveRequest(err) != nil {
 		return false, err
 	}
@@ -124,7 +124,7 @@ func (i *instances) InstanceShutdown(_ context.Context, node *v1.Node) (bool, er
 // InstanceMetadata returns the instance's metadata. The values returned in InstanceMetadata are
 // translated into specific fields in the Node object on registration.
 // Use the node.name or node.spec.providerID field to find the node in the cloud provider.
-func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudprovider.InstanceMetadata, error) {
+func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloudprovider.InstanceMetadata, error) {
 	klog.V(4).InfoS("instances.InstanceMetadata() called", "node", klog.KRef("", node.Name))
 
 	if providedIP, ok := node.ObjectMeta.Annotations[cloudproviderapi.AnnotationAlphaProvidedIPAddr]; ok {
@@ -142,11 +142,11 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 
 			mc := metrics.NewMetricContext("findVmByName")
 
-			vmRef, region, err = i.c.FindVMByName(node.Name)
+			vmRef, region, err = i.c.FindVMByName(ctx, node.Name)
 			if mc.ObserveRequest(err) != nil {
 				mc := metrics.NewMetricContext("findVmByUUID")
 
-				vmRef, region, err = i.c.FindVMByUUID(uuid)
+				vmRef, region, err = i.c.FindVMByUUID(ctx, uuid)
 				if mc.ObserveRequest(err) != nil {
 					return nil, fmt.Errorf("instances.InstanceMetadata() - failed to find instance by name/uuid %s: %v, skipped", node.Name, err)
 				}
@@ -166,7 +166,7 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 		if vmRef == nil {
 			mc := metrics.NewMetricContext("getVmInfo")
 
-			vmRef, region, err = i.getInstance(node)
+			vmRef, region, err = i.getInstance(ctx, node)
 			if mc.ObserveRequest(err) != nil {
 				return nil, err
 			}
@@ -180,7 +180,7 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 
 		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeHostName, Address: node.Name})
 
-		instanceType, err := i.getInstanceType(vmRef, region)
+		instanceType, err := i.getInstanceType(ctx, vmRef, region)
 		if err != nil {
 			instanceType = vmRef.GetVmType()
 		}
@@ -189,7 +189,7 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 			ProviderID:    providerID,
 			NodeAddresses: addresses,
 			InstanceType:  instanceType,
-			Zone:          vmRef.Node(),
+			Zone:          vmRef.Node().String(),
 			Region:        region,
 		}, nil
 	}
@@ -199,11 +199,13 @@ func (i *instances) InstanceMetadata(_ context.Context, node *v1.Node) (*cloudpr
 	return &cloudprovider.InstanceMetadata{}, nil
 }
 
-func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
+func (i *instances) getInstance(ctx context.Context, node *v1.Node) (*pxapi.VmRef, string, error) {
+	klog.V(4).InfoS("instances.getInstance() called", "node", klog.KRef("", node.Name), "provider", i.provider)
+
 	if i.provider == cluster.ProviderCapmox {
 		uuid := node.Status.NodeInfo.SystemUUID
 
-		vmRef, region, err := i.c.FindVMByUUID(uuid)
+		vmRef, region, err := i.c.FindVMByUUID(ctx, uuid)
 		if err != nil {
 			return nil, "", fmt.Errorf("instances.getInstance() error: %v", err)
 		}
@@ -211,7 +213,7 @@ func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
 		return vmRef, region, nil
 	}
 
-	vm, region, err := provider.ParseProviderID(node.Spec.ProviderID)
+	vmRef, region, err := provider.ParseProviderID(node.Spec.ProviderID)
 	if err != nil {
 		return nil, "", fmt.Errorf("instances.getInstance() error: %v", err)
 	}
@@ -223,7 +225,7 @@ func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
 
 	mc := metrics.NewMetricContext("getVmInfo")
 
-	vmInfo, err := px.GetVmInfo(vm)
+	vmInfo, err := px.GetVmInfo(ctx, vmRef)
 	if mc.ObserveRequest(err) != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return nil, "", cloudprovider.InstanceNotFound
@@ -238,10 +240,10 @@ func (i *instances) getInstance(node *v1.Node) (*pxapi.VmRef, string, error) {
 
 	klog.V(5).Infof("instances.getInstance() vmInfo %+v", vmInfo)
 
-	return vm, region, nil
+	return vmRef, region, nil
 }
 
-func (i *instances) getInstanceType(vmRef *pxapi.VmRef, region string) (string, error) {
+func (i *instances) getInstanceType(ctx context.Context, vmRef *pxapi.VmRef, region string) (string, error) {
 	px, err := i.c.GetProxmoxCluster(region)
 	if err != nil {
 		return "", err
@@ -249,7 +251,7 @@ func (i *instances) getInstanceType(vmRef *pxapi.VmRef, region string) (string, 
 
 	mc := metrics.NewMetricContext("getVmInfo")
 
-	vmInfo, err := px.GetVmInfo(vmRef)
+	vmInfo, err := px.GetVmInfo(ctx, vmRef)
 	if mc.ObserveRequest(err) != nil {
 		return "", err
 	}

@@ -17,6 +17,7 @@ limitations under the License.
 package cluster_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -78,7 +79,7 @@ func TestCheckClusters(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, pxapi)
 
-	err = client.CheckClusters()
+	err = client.CheckClusters(context.Background())
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "failed to initialized proxmox client in region")
 }
@@ -125,7 +126,7 @@ func TestFindVMByNameNonExist(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, client)
 
-	vmr, cluster, err := client.FindVMByName("non-existing-vm")
+	vmr, cluster, err := client.FindVMByName(context.Background(), "non-existing-vm")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", cluster)
 	assert.Nil(t, vmr)
@@ -202,7 +203,7 @@ func TestFindVMByNameExist(t *testing.T) {
 		testCase := testCase
 
 		t.Run(fmt.Sprint(testCase.msg), func(t *testing.T) {
-			vmr, cluster, err := client.FindVMByName(testCase.vmName)
+			vmr, cluster, err := client.FindVMByName(context.Background(), testCase.vmName)
 
 			if testCase.expectedError == nil {
 				assert.Nil(t, err)
