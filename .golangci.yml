@@ -28,7 +28,6 @@ output:
       path: stdout
   print-issued-lines: true
   print-linter-name: true
-  uniq-by-line: true
   sort-results: true
 
 # all available settings of specific linters
@@ -153,6 +152,7 @@ linters:
   fast: false
 
 issues:
+  uniq-by-line: true
   # List of regexps of issue texts to exclude, empty list by default.
   # But independently from this option we use default exclude patterns,
   # it can be disabled by `exclude-use-default: false`. To list all
