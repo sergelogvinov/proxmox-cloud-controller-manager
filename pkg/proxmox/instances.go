@@ -142,7 +142,7 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 
 			mc := metrics.NewMetricContext("findVmByName")
 
-			vmRef, region, err = i.c.FindVMByName(ctx, node.Name)
+			vmRef, region, err = i.c.FindVMByNode(ctx, node)
 			if mc.ObserveRequest(err) != nil {
 				mc := metrics.NewMetricContext("findVmByUUID")
 
@@ -234,8 +234,10 @@ func (i *instances) getInstance(ctx context.Context, node *v1.Node) (*pxapi.VmRe
 		return nil, "", err
 	}
 
-	if vmInfo["name"] != nil && vmInfo["name"].(string) != node.Name { //nolint:errcheck
-		return nil, "", fmt.Errorf("instances.getInstance() vm.name(%s) != node.name(%s)", vmInfo["name"].(string), node.Name) //nolint:errcheck
+	if i.c.GetVMName(vmInfo) != node.Name && i.c.GetVMUUID(vmInfo) != node.Status.NodeInfo.SystemUUID {
+		klog.Errorf("instances.getInstance() vm.name(%s) != node.name(%s) with uuid=%s", i.c.GetVMName(vmInfo), node.Name, node.Status.NodeInfo.SystemUUID)
+
+		return nil, "", cloudprovider.InstanceNotFound
 	}
 
 	klog.V(5).Infof("instances.getInstance() vmInfo %+v", vmInfo)

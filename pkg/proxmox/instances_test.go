@@ -66,20 +66,22 @@ clusters:
 			return httpmock.NewJsonResponse(200, map[string]interface{}{
 				"data": []interface{}{
 					map[string]interface{}{
-						"node":   "pve-1",
-						"type":   "qemu",
-						"vmid":   100,
-						"name":   "cluster-1-node-1",
-						"maxcpu": 4,
-						"maxmem": 10 * 1024 * 1024 * 1024,
+						"node":    "pve-1",
+						"type":    "qemu",
+						"vmid":    100,
+						"name":    "cluster-1-node-1",
+						"maxcpu":  4,
+						"maxmem":  10 * 1024 * 1024 * 1024,
+						"smbios1": "uuid=8af7110d-bfad-407a-a663-9527d10a6583",
 					},
 					map[string]interface{}{
-						"node":   "pve-2",
-						"type":   "qemu",
-						"vmid":   101,
-						"name":   "cluster-1-node-2",
-						"maxcpu": 2,
-						"maxmem": 5 * 1024 * 1024 * 1024,
+						"node":    "pve-2",
+						"type":    "qemu",
+						"vmid":    101,
+						"name":    "cluster-1-node-2",
+						"maxcpu":  2,
+						"maxmem":  5 * 1024 * 1024 * 1024,
+						"smbios1": "uuid=5d04cb23-ea78-40a3-af2e-dd54798dc887",
 					},
 				},
 			})
@@ -91,13 +93,53 @@ clusters:
 			return httpmock.NewJsonResponse(200, map[string]interface{}{
 				"data": []interface{}{
 					map[string]interface{}{
-						"node":   "pve-3",
-						"type":   "qemu",
-						"vmid":   100,
-						"name":   "cluster-2-node-1",
-						"maxcpu": 1,
-						"maxmem": 2 * 1024 * 1024 * 1024,
+						"node":    "pve-3",
+						"type":    "qemu",
+						"vmid":    100,
+						"name":    "cluster-2-node-1",
+						"maxcpu":  1,
+						"maxmem":  2 * 1024 * 1024 * 1024,
+						"smbios1": "uuid=3d3db687-89dd-473e-8463-6599f25b36a8",
 					},
+				},
+			})
+		},
+	)
+
+	httpmock.RegisterResponder("GET", "https://127.0.0.1:8006/api2/json/nodes/pve-1/qemu/100/config",
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(200, map[string]interface{}{
+				"data": map[string]interface{}{
+					"node":    "pve-1",
+					"type":    "qemu",
+					"vmid":    100,
+					"smbios1": "uuid=8af7110d-bfad-407a-a663-9527d10a6583",
+				},
+			})
+		},
+	)
+
+	httpmock.RegisterResponder("GET", "https://127.0.0.1:8006/api2/json/nodes/pve-2/qemu/101/config",
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(200, map[string]interface{}{
+				"data": map[string]interface{}{
+					"node":    "pve-2",
+					"type":    "qemu",
+					"vmid":    101,
+					"smbios1": "uuid=5d04cb23-ea78-40a3-af2e-dd54798dc887",
+				},
+			})
+		},
+	)
+
+	httpmock.RegisterResponder("GET", "https://127.0.0.2:8006/api2/json/nodes/pve-3/qemu/100/config",
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(200, map[string]interface{}{
+				"data": map[string]interface{}{
+					"node":    "pve-3",
+					"type":    "qemu",
+					"vmid":    100,
+					"smbios1": "uuid=3d3db687-89dd-473e-8463-6599f25b36a8",
 				},
 			})
 		},
@@ -207,9 +249,30 @@ func (ts *ccmTestSuite) TestInstanceExists() {
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-1/100",
 				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
+					},
+				},
 			},
-			expectedError: "vm.name(cluster-1-node-1) != node.name(cluster-1-node-3)",
-			expected:      false,
+			expected: true,
+		},
+		{
+			msg: "NodeExistsWithDifferentNameAndUUID",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-1-node-3",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "proxmox://cluster-1/100",
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "8af7110d-0000-0000-0000-9527d10a6583",
+					},
+				},
+			},
+			expected: false,
 		},
 	}
 
@@ -288,6 +351,11 @@ func (ts *ccmTestSuite) TestInstanceShutdown() {
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-1/100",
 				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
+					},
+				},
 			},
 			expected: false,
 		},
@@ -302,6 +370,40 @@ func (ts *ccmTestSuite) TestInstanceShutdown() {
 				},
 			},
 			expected: true,
+		},
+		{
+			msg: "NodeExistsWithDifferentName",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-1-node-3",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "proxmox://cluster-1/100",
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			msg: "NodeExistsWithDifferentUUID",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-1-node-1",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "proxmox://cluster-1/100",
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "8af7110d-0000-0000-0000-9527d10a6583",
+					},
+				},
+			},
+			expected: false,
 		},
 	}
 
@@ -398,6 +500,11 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
 					},
 				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
+					},
+				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
 				ProviderID: "proxmox://cluster-1/100",
@@ -423,6 +530,11 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 					Name: "cluster-1-node-1",
 					Annotations: map[string]string{
 						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4,2001::1",
+					},
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
 					},
 				},
 			},
@@ -454,6 +566,11 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 					Name: "cluster-2-node-1",
 					Annotations: map[string]string{
 						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+					},
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "3d3db687-89dd-473e-8463-6599f25b36a8",
 					},
 				},
 			},
