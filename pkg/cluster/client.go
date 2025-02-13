@@ -29,6 +29,7 @@ import (
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -106,6 +107,33 @@ func (c *Cluster) GetProxmoxCluster(region string) (*pxapi.Client, error) {
 	return nil, fmt.Errorf("proxmox cluster %s not found", region)
 }
 
+// FindVMByNode find a VM by kubernetes node resource in all Proxmox clusters.
+func (c *Cluster) FindVMByNode(ctx context.Context, node *v1.Node) (*pxapi.VmRef, string, error) {
+	for region, px := range c.proxmox {
+		vmrs, err := px.GetVmRefsByName(ctx, node.Name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				continue
+			}
+
+			return nil, "", err
+		}
+
+		for _, vmr := range vmrs {
+			config, err := px.GetVmConfig(ctx, vmr)
+			if err != nil {
+				return nil, "", err
+			}
+
+			if c.GetVMUUID(config) == node.Status.NodeInfo.SystemUUID {
+				return vmr, region, nil
+			}
+		}
+	}
+
+	return nil, "", fmt.Errorf("vm '%s' not found", node.Name)
+}
+
 // FindVMByName find a VM by name in all Proxmox clusters.
 func (c *Cluster) FindVMByName(ctx context.Context, name string) (*pxapi.VmRef, string, error) {
 	for region, px := range c.proxmox {
@@ -160,6 +188,24 @@ func (c *Cluster) FindVMByUUID(ctx context.Context, uuid string) (*pxapi.VmRef, 
 	}
 
 	return nil, "", fmt.Errorf("vm with uuid '%s' not found", uuid)
+}
+
+// GetVMName returns the VM name.
+func (c *Cluster) GetVMName(vmInfo map[string]interface{}) string {
+	if vmInfo["name"] != nil {
+		return vmInfo["name"].(string) //nolint:errcheck
+	}
+
+	return ""
+}
+
+// GetVMUUID returns the VM UUID.
+func (c *Cluster) GetVMUUID(vmInfo map[string]interface{}) string {
+	if vmInfo["smbios1"] != nil {
+		return c.getUUID(vmInfo["smbios1"].(string)) //nolint:errcheck
+	}
+
+	return ""
 }
 
 func (c *Cluster) getUUID(smbios string) string {

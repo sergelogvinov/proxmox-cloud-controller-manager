@@ -4,7 +4,7 @@
 ## Note to the Contributor
 
 We encourage contributors to go through a proposal process to discuss major changes.
-Before your PR is allowed to run through CI, the maintainers of Talos CCM will first have to approve the PR.
+Before your PR is allowed to run through CI, the maintainers of Proxmox CCM will first have to approve the PR.
 -->
 
 ## What? (description)
