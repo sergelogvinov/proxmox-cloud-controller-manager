@@ -180,7 +180,7 @@ func (c *Cluster) FindVMByUUID(ctx context.Context, uuid string) (*pxapi.VmRef, 
 			}
 
 			if config["smbios1"] != nil {
-				if c.getUUID(config["smbios1"].(string)) == uuid { //nolint:errcheck
+				if c.getSMBSetting(config, "uuid") == uuid {
 					return vmr, region, nil
 				}
 			}
@@ -202,13 +202,27 @@ func (c *Cluster) GetVMName(vmInfo map[string]interface{}) string {
 // GetVMUUID returns the VM UUID.
 func (c *Cluster) GetVMUUID(vmInfo map[string]interface{}) string {
 	if vmInfo["smbios1"] != nil {
-		return c.getUUID(vmInfo["smbios1"].(string)) //nolint:errcheck
+		return c.getSMBSetting(vmInfo, "uuid")
 	}
 
 	return ""
 }
 
-func (c *Cluster) getUUID(smbios string) string {
+// GetVMSKU returns the VM instance type name.
+func (c *Cluster) GetVMSKU(vmInfo map[string]interface{}) string {
+	if vmInfo["smbios1"] != nil {
+		return c.getSMBSetting(vmInfo, "sku")
+	}
+
+	return ""
+}
+
+func (c *Cluster) getSMBSetting(vmInfo map[string]interface{}, name string) string {
+	smbios, ok := vmInfo["smbios1"].(string)
+	if !ok {
+		return ""
+	}
+
 	for _, l := range strings.Split(smbios, ",") {
 		if l == "" || l == "base64=1" {
 			continue
@@ -220,7 +234,7 @@ func (c *Cluster) getUUID(smbios string) string {
 		}
 
 		for k, v := range parsedParameter {
-			if k == "uuid" {
+			if k == name {
 				decodedString, err := base64.StdEncoding.DecodeString(v[0])
 				if err != nil {
 					decodedString = []byte(v[0])

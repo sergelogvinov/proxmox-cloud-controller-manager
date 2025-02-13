@@ -19,6 +19,8 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
@@ -37,6 +39,8 @@ type instances struct {
 	c        *cluster.Cluster
 	provider cluster.Provider
 }
+
+var instanceTypeNameRegexp = regexp.MustCompile(`(^[a-zA-Z0-9_.-]+)$`)
 
 func newInstances(client *cluster.Cluster, provider cluster.Provider) *instances {
 	return &instances{
@@ -225,7 +229,7 @@ func (i *instances) getInstance(ctx context.Context, node *v1.Node) (*pxapi.VmRe
 
 	mc := metrics.NewMetricContext("getVmInfo")
 
-	vmInfo, err := px.GetVmInfo(ctx, vmRef)
+	vmConfig, err := px.GetVmConfig(ctx, vmRef)
 	if mc.ObserveRequest(err) != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return nil, "", cloudprovider.InstanceNotFound
@@ -234,13 +238,13 @@ func (i *instances) getInstance(ctx context.Context, node *v1.Node) (*pxapi.VmRe
 		return nil, "", err
 	}
 
-	if i.c.GetVMName(vmInfo) != node.Name && i.c.GetVMUUID(vmInfo) != node.Status.NodeInfo.SystemUUID {
-		klog.Errorf("instances.getInstance() vm.name(%s) != node.name(%s) with uuid=%s", i.c.GetVMName(vmInfo), node.Name, node.Status.NodeInfo.SystemUUID)
+	if i.c.GetVMName(vmConfig) != node.Name || i.c.GetVMUUID(vmConfig) != node.Status.NodeInfo.SystemUUID {
+		klog.Errorf("instances.getInstance() vm.name(%s) != node.name(%s) with uuid=%s", i.c.GetVMName(vmConfig), node.Name, node.Status.NodeInfo.SystemUUID)
 
 		return nil, "", cloudprovider.InstanceNotFound
 	}
 
-	klog.V(5).Infof("instances.getInstance() vmInfo %+v", vmInfo)
+	klog.V(5).Infof("instances.getInstance() vmConfig %+v", vmConfig)
 
 	return vmRef, region, nil
 }
@@ -253,16 +257,26 @@ func (i *instances) getInstanceType(ctx context.Context, vmRef *pxapi.VmRef, reg
 
 	mc := metrics.NewMetricContext("getVmInfo")
 
-	vmInfo, err := px.GetVmInfo(ctx, vmRef)
+	vmConfig, err := px.GetVmConfig(ctx, vmRef)
 	if mc.ObserveRequest(err) != nil {
 		return "", err
 	}
 
-	if vmInfo["maxcpu"] == nil || vmInfo["maxmem"] == nil {
+	sku := i.c.GetVMSKU(vmConfig)
+	if sku != "" && instanceTypeNameRegexp.MatchString(sku) {
+		return sku, nil
+	}
+
+	if vmConfig["cores"] == nil || vmConfig["memory"] == nil {
 		return "", fmt.Errorf("instances.getInstanceType() failed to get instance type")
 	}
 
+	memory, err := strconv.Atoi(vmConfig["memory"].(string)) //nolint:errcheck
+	if err != nil {
+		return "", err
+	}
+
 	return fmt.Sprintf("%.0fVCPU-%.0fGB",
-		vmInfo["maxcpu"].(float64),                     //nolint:errcheck
-		vmInfo["maxmem"].(float64)/1024/1024/1024), nil //nolint:errcheck
+		vmConfig["cores"].(float64), //nolint:errcheck
+		float64(memory)/1024), nil
 }
