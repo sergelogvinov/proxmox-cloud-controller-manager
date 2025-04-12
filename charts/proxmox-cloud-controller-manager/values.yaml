@@ -16,8 +16,15 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+# -- Any extra environments for talos-cloud-controller-manager
+extraEnvs:
+  []
+  # - name: KUBERNETES_SERVICE_HOST
+  #   value: 127.0.0.1
+
 # -- Any extra arguments for talos-cloud-controller-manager
-extraArgs: []
+extraArgs:
+  []
   # - --cluster-name=kubernetes
 
 # -- List of controllers should be enabled.
@@ -42,7 +49,7 @@ existingConfigSecretKey: config.yaml
 config:
   features:
     # specify provider: proxmox if you are using capmox (cluster api provider for proxmox)
-    provider: 'default'
+    provider: "default"
   clusters: []
   #   - url: https://cluster-api-1.exmple.com:8006/api2/json
   #     insecure: false
@@ -66,7 +73,8 @@ priorityClassName: system-cluster-critical
 
 # -- Add additional init containers to the CCM pods.
 # ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-initContainers: []
+initContainers:
+  []
   # - name: loadbalancer
   #   restartPolicy: Always
   #   image: ghcr.io/sergelogvinov/haproxy:2.8.3-alpine3.18
@@ -89,7 +97,8 @@ initContainers: []
 
 # -- hostAliases Deployment pod host aliases
 # ref: https://kubernetes.io/docs/tasks/network/customize-hosts-file-for-pods/
-hostAliases: []
+hostAliases:
+  []
   # - ip: 127.0.0.1
   #   hostnames:
   #     - proxmox.domain.com
@@ -113,7 +122,7 @@ securityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop:
-    - ALL
+      - ALL
   seccompProfile:
     type: RuntimeDefault
 
@@ -145,7 +154,8 @@ updateStrategy:
 
 # -- Node labels for data pods assignment.
 # ref: https://kubernetes.io/docs/user-guide/node-selection/
-nodeSelector: {}
+nodeSelector:
+  {}
   # node-role.kubernetes.io/control-plane: ""
 
 # -- Tolerations for data pods assignment.
