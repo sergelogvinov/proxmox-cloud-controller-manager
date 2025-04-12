@@ -5,10 +5,10 @@ kind: ServiceAccount
 metadata:
   name: proxmox-cloud-controller-manager
   labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.2.11
+    helm.sh/chart: proxmox-cloud-controller-manager-0.2.13
     app.kubernetes.io/name: proxmox-cloud-controller-manager
     app.kubernetes.io/instance: proxmox-cloud-controller-manager
-    app.kubernetes.io/version: "v0.7.0"
+    app.kubernetes.io/version: "v0.8.0"
     app.kubernetes.io/managed-by: Helm
   namespace: kube-system
 ---
@@ -18,10 +18,10 @@ kind: ClusterRole
 metadata:
   name: system:proxmox-cloud-controller-manager
   labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.2.11
+    helm.sh/chart: proxmox-cloud-controller-manager-0.2.13
     app.kubernetes.io/name: proxmox-cloud-controller-manager
     app.kubernetes.io/instance: proxmox-cloud-controller-manager
-    app.kubernetes.io/version: "v0.7.0"
+    app.kubernetes.io/version: "v0.8.0"
     app.kubernetes.io/managed-by: Helm
 rules:
 - apiGroups:
@@ -106,10 +106,10 @@ kind: Deployment
 metadata:
   name: proxmox-cloud-controller-manager
   labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.2.11
+    helm.sh/chart: proxmox-cloud-controller-manager-0.2.13
     app.kubernetes.io/name: proxmox-cloud-controller-manager
     app.kubernetes.io/instance: proxmox-cloud-controller-manager
-    app.kubernetes.io/version: "v0.7.0"
+    app.kubernetes.io/version: "v0.8.0"
     app.kubernetes.io/managed-by: Helm
   namespace: kube-system
 spec:
@@ -148,7 +148,7 @@ spec:
               - ALL
             seccompProfile:
               type: RuntimeDefault
-          image: "ghcr.io/sergelogvinov/proxmox-cloud-controller-manager:v0.7.0"
+          image: "ghcr.io/sergelogvinov/proxmox-cloud-controller-manager:v0.8.0"
           imagePullPolicy: IfNotPresent
           args:
             - --v=4

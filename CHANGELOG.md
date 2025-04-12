@@ -1,6 +1,29 @@
 
+<a name="v0.8.0"></a>
+## [v0.8.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.7.0...v0.8.0) (2025-04-12)
+
+Welcome to the v0.8.0 release of Kubernetes cloud controller manager for Proxmox!
+
+### Bug Fixes
+
+- find node by name
+
+### Features
+
+- custom instance type
+- **chart:** extra envs values
+
+### Changelog
+
+* 646d776 feat(chart): extra envs values
+* 19e1f44 chore: bump deps
+* 0f0374c feat: custom instance type
+* 3a34fb9 fix: find node by name
+* 8a2f518 chore: bump deps
+* ca452ad chore: bump deps
+
 <a name="v0.7.0"></a>
-## [v0.7.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.6.0...v0.7.0) (2025-01-02)
+## [v0.7.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.6.0...v0.7.0) (2025-01-08)
 
 Welcome to the v0.7.0 release of Kubernetes cloud controller manager for Proxmox!
 
@@ -10,6 +33,7 @@ Welcome to the v0.7.0 release of Kubernetes cloud controller manager for Proxmox
 
 ### Changelog
 
+* bb868bc chore: release v0.7.0
 * 956a30a feat: enable support for capmox This makes ccm compatible with cluster api and cluster api provider proxmox (capmox)
 
 <a name="v0.6.0"></a>
