@@ -83,9 +83,14 @@ func (c *Cluster) CheckClusters(ctx context.Context) error {
 			return fmt.Errorf("failed to initialized proxmox client in region %s, error: %v", region, err)
 		}
 
-		vms, err := client.GetVmList(ctx)
+		vmlist, err := client.GetVmList(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to get list of VMs in region %s, error: %v", region, err)
+		}
+
+		vms, ok := vmlist["data"].([]interface{})
+		if !ok {
+			return fmt.Errorf("failed to cast response to list of VMs in region %s, error: %v", region, err)
 		}
 
 		if len(vms) > 0 {
