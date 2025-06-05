@@ -1,4 +1,19 @@
 
+<a name="v0.9.0"></a>
+## [v0.9.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.8.0...v0.9.0) (2025-06-05)
+
+Welcome to the v0.9.0 release of Kubernetes cloud controller manager for Proxmox!
+
+### Bug Fixes
+
+- cluster vm list
+
+### Changelog
+
+* e664b24 chore: bump deps
+* efb753c fix: cluster vm list
+* 5a645a2 chore: bump deps
+
 <a name="v0.8.0"></a>
 ## [v0.8.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.7.0...v0.8.0) (2025-04-12)
 
@@ -15,6 +30,7 @@ Welcome to the v0.8.0 release of Kubernetes cloud controller manager for Proxmox
 
 ### Changelog
 
+* 2e35df2 chore: release v0.8.0
 * 646d776 feat(chart): extra envs values
 * 19e1f44 chore: bump deps
 * 0f0374c feat: custom instance type
