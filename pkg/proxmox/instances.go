@@ -198,7 +198,10 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 		}, nil
 	}
 
-	klog.InfoS("instances.InstanceMetadata() is kubelet has args: --cloud-provider=external on the node?", node, klog.KRef("", node.Name))
+	klog.InfoS(fmt.Sprintf(
+		"instances.InstanceMetadata() called: label %s missing from node. Was kubelet started without --cloud-provider=external?",
+		cloudproviderapi.AnnotationAlphaProvidedIPAddr),
+		node, klog.KRef("", node.Name))
 
 	return &cloudprovider.InstanceMetadata{}, nil
 }
