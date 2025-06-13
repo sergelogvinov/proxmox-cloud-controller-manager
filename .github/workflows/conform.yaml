@@ -21,3 +21,5 @@ jobs:
 
       - name: Conform action
         uses: talos-systems/conform@v0.1.0-alpha.30
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
