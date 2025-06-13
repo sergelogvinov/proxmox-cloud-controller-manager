@@ -9,10 +9,9 @@ policies:
       body:
         required: true
       dco: true
-      gpg: false
       spellcheck:
         locale: US
-      maximumOfOneCommit: false
+      maximumOfOneCommit: true
       conventional:
         types:
           - build
