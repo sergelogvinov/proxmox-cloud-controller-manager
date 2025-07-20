@@ -21,8 +21,9 @@ import (
 	"context"
 	"io"
 
-	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+	ccmConfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
+	pxpool "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 
 	clientkubernetes "k8s.io/client-go/kubernetes"
 	cloudprovider "k8s.io/cloud-provider"
@@ -38,7 +39,7 @@ const (
 )
 
 type cloud struct {
-	client      *cluster.Cluster
+	client      *pxpool.ProxmoxPool
 	kclient     clientkubernetes.Interface
 	instancesV2 cloudprovider.InstancesV2
 
@@ -48,7 +49,7 @@ type cloud struct {
 
 func init() {
 	cloudprovider.RegisterCloudProvider(provider.ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
-		cfg, err := cluster.ReadCloudConfig(config)
+		cfg, err := ccmConfig.ReadCloudConfig(config)
 		if err != nil {
 			klog.ErrorS(err, "failed to read config")
 
@@ -59,8 +60,8 @@ func init() {
 	})
 }
 
-func newCloud(config *cluster.ClustersConfig) (cloudprovider.Interface, error) {
-	client, err := cluster.NewCluster(config, nil)
+func newCloud(config *ccmConfig.ClustersConfig) (cloudprovider.Interface, error) {
+	client, err := pxpool.NewProxmoxPool(config.Clusters, nil)
 	if err != nil {
 		return nil, err
 	}

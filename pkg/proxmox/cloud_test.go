@@ -22,19 +22,19 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+	ccmConfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
 )
 
 func TestNewCloudError(t *testing.T) {
-	cloud, err := newCloud(&cluster.ClustersConfig{})
+	cloud, err := newCloud(&ccmConfig.ClustersConfig{})
 	assert.NotNil(t, err)
 	assert.Nil(t, cloud)
 	assert.EqualError(t, err, "no Proxmox clusters found")
 }
 
 func TestCloud(t *testing.T) {
-	cfg, err := cluster.ReadCloudConfig(strings.NewReader(`
+	cfg, err := ccmConfig.ReadCloudConfig(strings.NewReader(`
 clusters:
   - url: https://example.com
     insecure: false

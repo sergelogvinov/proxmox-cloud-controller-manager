@@ -25,9 +25,10 @@ import (
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 
-	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+	ccmConfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	metrics "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/metrics"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
+	pxpool "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 
 	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
@@ -36,13 +37,13 @@ import (
 )
 
 type instances struct {
-	c        *cluster.Cluster
-	provider cluster.Provider
+	c        *pxpool.ProxmoxPool
+	provider ccmConfig.Provider
 }
 
 var instanceTypeNameRegexp = regexp.MustCompile(`(^[a-zA-Z0-9_.-]+)$`)
 
-func newInstances(client *cluster.Cluster, provider cluster.Provider) *instances {
+func newInstances(client *pxpool.ProxmoxPool, provider ccmConfig.Provider) *instances {
 	return &instances{
 		c:        client,
 		provider: provider,
@@ -156,7 +157,7 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 				}
 			}
 
-			if i.provider == cluster.ProviderCapmox {
+			if i.provider == ccmConfig.ProviderCapmox {
 				providerID = provider.GetProviderIDFromUUID(uuid)
 			} else {
 				providerID = provider.GetProviderID(region, vmRef)
@@ -209,7 +210,7 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 func (i *instances) getInstance(ctx context.Context, node *v1.Node) (*pxapi.VmRef, string, error) {
 	klog.V(4).InfoS("instances.getInstance() called", "node", klog.KRef("", node.Name), "provider", i.provider)
 
-	if i.provider == cluster.ProviderCapmox {
+	if i.provider == ccmConfig.ProviderCapmox {
 		uuid := node.Status.NodeInfo.SystemUUID
 
 		vmRef, region, err := i.c.FindVMByUUID(ctx, uuid)

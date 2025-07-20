@@ -14,78 +14,78 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster_test
+package proxmoxpool_test
 
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+	pxpool "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 )
 
-func newClusterEnv() (*cluster.ClustersConfig, error) {
-	cfg, err := cluster.ReadCloudConfig(strings.NewReader(`
-clusters:
-  - url: https://127.0.0.1:8006/api2/json
-    insecure: false
-    token_id: "user!token-id"
-    token_secret: "secret"
-    region: cluster-1
-  - url: https://127.0.0.2:8006/api2/json
-    insecure: false
-    token_id: "user!token-id"
-    token_secret: "secret"
-    region: cluster-2
-`))
+func newClusterEnv() []*pxpool.ProxmoxCluster {
+	// copilot convert the cfg call to an array of []*proxmox_pool.ProxmoxCluster:
+	cfg := []*pxpool.ProxmoxCluster{
+		{
+			URL:         "https://127.0.0.1:8006/api2/json",
+			Insecure:    false,
+			TokenID:     "user!token-id",
+			TokenSecret: "secret",
+			Region:      "cluster-1",
+		},
+		{
+			URL:         "https://127.0.0.2:8006/api2/json",
+			Insecure:    false,
+			TokenID:     "user!token-id",
+			TokenSecret: "secret",
+			Region:      "cluster-2",
+		},
+	}
 
-	return &cfg, err
+	return cfg
 }
 
 func TestNewClient(t *testing.T) {
-	cfg, err := newClusterEnv()
-	assert.Nil(t, err)
+	cfg := newClusterEnv()
 	assert.NotNil(t, cfg)
 
-	client, err := cluster.NewCluster(&cluster.ClustersConfig{}, nil)
+	pClient, err := pxpool.NewProxmoxPool([]*pxpool.ProxmoxCluster{}, nil)
 	assert.NotNil(t, err)
-	assert.Nil(t, client)
+	assert.Nil(t, pClient)
 
-	client, err = cluster.NewCluster(cfg, nil)
+	pClient, err = pxpool.NewProxmoxPool(cfg, nil)
 	assert.Nil(t, err)
-	assert.NotNil(t, client)
+	assert.NotNil(t, pClient)
 }
 
 func TestCheckClusters(t *testing.T) {
-	cfg, err := newClusterEnv()
-	assert.Nil(t, err)
+	cfg := newClusterEnv()
 	assert.NotNil(t, cfg)
 
-	client, err := cluster.NewCluster(cfg, nil)
+	pClient, err := pxpool.NewProxmoxPool(cfg, nil)
 	assert.Nil(t, err)
-	assert.NotNil(t, client)
+	assert.NotNil(t, pClient)
 
-	pxapi, err := client.GetProxmoxCluster("test")
+	pxapi, err := pClient.GetProxmoxCluster("test")
 	assert.NotNil(t, err)
 	assert.Nil(t, pxapi)
 	assert.Equal(t, "proxmox cluster test not found", err.Error())
 
-	pxapi, err = client.GetProxmoxCluster("cluster-1")
+	pxapi, err = pClient.GetProxmoxCluster("cluster-1")
 	assert.Nil(t, err)
 	assert.NotNil(t, pxapi)
 
-	err = client.CheckClusters(t.Context())
+	err = pClient.CheckClusters(t.Context())
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "failed to initialized proxmox client in region")
 }
 
 func TestFindVMByNameNonExist(t *testing.T) {
-	cfg, err := newClusterEnv()
-	assert.Nil(t, err)
+	cfg := newClusterEnv()
 	assert.NotNil(t, cfg)
 
 	httpmock.Activate()
@@ -121,11 +121,11 @@ func TestFindVMByNameNonExist(t *testing.T) {
 		},
 	)
 
-	client, err := cluster.NewCluster(cfg, &http.Client{})
+	pClient, err := pxpool.NewProxmoxPool(cfg, &http.Client{})
 	assert.Nil(t, err)
-	assert.NotNil(t, client)
+	assert.NotNil(t, pClient)
 
-	vmr, cluster, err := client.FindVMByName(t.Context(), "non-existing-vm")
+	vmr, cluster, err := pClient.FindVMByName(t.Context(), "non-existing-vm")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", cluster)
 	assert.Nil(t, vmr)
@@ -133,8 +133,7 @@ func TestFindVMByNameNonExist(t *testing.T) {
 }
 
 func TestFindVMByNameExist(t *testing.T) {
-	cfg, err := newClusterEnv()
-	assert.Nil(t, err)
+	cfg := newClusterEnv()
 	assert.NotNil(t, cfg)
 
 	httpmock.Activate()
@@ -168,9 +167,9 @@ func TestFindVMByNameExist(t *testing.T) {
 		},
 	)
 
-	client, err := cluster.NewCluster(cfg, &http.Client{})
+	pClient, err := pxpool.NewProxmoxPool(cfg, &http.Client{})
 	assert.Nil(t, err)
-	assert.NotNil(t, client)
+	assert.NotNil(t, pClient)
 
 	tests := []struct {
 		msg             string
@@ -202,7 +201,7 @@ func TestFindVMByNameExist(t *testing.T) {
 		testCase := testCase
 
 		t.Run(fmt.Sprint(testCase.msg), func(t *testing.T) {
-			vmr, cluster, err := client.FindVMByName(t.Context(), testCase.vmName)
+			vmr, cluster, err := pClient.FindVMByName(t.Context(), testCase.vmName)
 
 			if testCase.expectedError == nil {
 				assert.Nil(t, err)
