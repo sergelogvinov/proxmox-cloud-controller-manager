@@ -40,8 +40,8 @@ To build this project, you must have the following installed:
 
 - git
 - make
-- golang 1.20+
-- golangci-lint
+- golang 1.24+
+- golangci-lint 2.2.0+
 
 endef
 
@@ -80,6 +80,9 @@ lint: ## Lint Code
 .PHONY: unit
 unit: ## Unit Tests
 	go test -tags=unit $(shell go list ./...) $(TESTARGS)
+
+.PHONY: test
+test: lint unit ## Run all tests
 
 .PHONY: conformance
 conformance: ## Conformance
