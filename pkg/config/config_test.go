@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster_test
+package config_test
 
 import (
 	"strings"
@@ -22,23 +22,23 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+	ccmConfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 )
 
 func TestReadCloudConfig(t *testing.T) {
-	cfg, err := cluster.ReadCloudConfig(nil)
+	cfg, err := ccmConfig.ReadCloudConfig(nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 
 	// Empty config
-	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
+	cfg, err = ccmConfig.ReadCloudConfig(strings.NewReader(`
 clusters:
 `))
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 
 	// Wrong config
-	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
+	cfg, err = ccmConfig.ReadCloudConfig(strings.NewReader(`
 clusters:
   test: false
 `))
@@ -47,7 +47,7 @@ clusters:
 	assert.NotNil(t, cfg)
 
 	// Non full config
-	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
+	cfg, err = ccmConfig.ReadCloudConfig(strings.NewReader(`
 clusters:
 - url: abcd
   region: cluster-1
@@ -57,7 +57,7 @@ clusters:
 	assert.NotNil(t, cfg)
 
 	// Valid config with one cluster
-	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
+	cfg, err = ccmConfig.ReadCloudConfig(strings.NewReader(`
 clusters:
   - url: https://example.com
     insecure: false
@@ -70,7 +70,7 @@ clusters:
 	assert.Equal(t, 1, len(cfg.Clusters))
 
 	// Valid config with one cluster (username/password), implicit default provider
-	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
+	cfg, err = ccmConfig.ReadCloudConfig(strings.NewReader(`
 clusters:
   - url: https://example.com
     insecure: false
@@ -81,10 +81,10 @@ clusters:
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 1, len(cfg.Clusters))
-	assert.Equal(t, cluster.ProviderDefault, cfg.Features.Provider)
+	assert.Equal(t, ccmConfig.ProviderDefault, cfg.Features.Provider)
 
 	// Valid config with one cluster (username/password), explicit provider default
-	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
+	cfg, err = ccmConfig.ReadCloudConfig(strings.NewReader(`
 features:
   provider: 'default'
 clusters:
@@ -97,10 +97,10 @@ clusters:
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 1, len(cfg.Clusters))
-	assert.Equal(t, cluster.ProviderDefault, cfg.Features.Provider)
+	assert.Equal(t, ccmConfig.ProviderDefault, cfg.Features.Provider)
 
 	// Valid config with one cluster (username/password), explicit provider capmox
-	cfg, err = cluster.ReadCloudConfig(strings.NewReader(`
+	cfg, err = ccmConfig.ReadCloudConfig(strings.NewReader(`
 features:
   provider: 'capmox'
 clusters:
@@ -113,16 +113,16 @@ clusters:
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 1, len(cfg.Clusters))
-	assert.Equal(t, cluster.ProviderCapmox, cfg.Features.Provider)
+	assert.Equal(t, ccmConfig.ProviderCapmox, cfg.Features.Provider)
 }
 
 func TestReadCloudConfigFromFile(t *testing.T) {
-	cfg, err := cluster.ReadCloudConfigFromFile("testdata/cloud-config.yaml")
+	cfg, err := ccmConfig.ReadCloudConfigFromFile("testdata/cloud-config.yaml")
 	assert.NotNil(t, err)
 	assert.EqualError(t, err, "error reading testdata/cloud-config.yaml: open testdata/cloud-config.yaml: no such file or directory")
 	assert.NotNil(t, cfg)
 
-	cfg, err = cluster.ReadCloudConfigFromFile("../../hack/proxmox-config.yaml")
+	cfg, err = ccmConfig.ReadCloudConfigFromFile("../../hack/proxmox-config.yaml")
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 2, len(cfg.Clusters))

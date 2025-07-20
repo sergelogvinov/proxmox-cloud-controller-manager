@@ -77,6 +77,11 @@ run: build ## Run
 lint: ## Lint Code
 	golangci-lint run --config .golangci.yml
 
+.PHONY: lint-fix
+lint-fix: ## Fix Lint Issues
+	golangci-lint run --fix --config .golangci.yml
+
+
 .PHONY: unit
 unit: ## Unit Tests
 	go test -tags=unit $(shell go list ./...) $(TESTARGS)

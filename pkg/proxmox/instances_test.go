@@ -28,8 +28,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	proxmoxcluster "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/cluster"
+	ccmConfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
+	pxpool "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,7 +45,7 @@ type ccmTestSuite struct {
 }
 
 func (ts *ccmTestSuite) SetupTest() {
-	cfg, err := proxmoxcluster.ReadCloudConfig(strings.NewReader(`
+	cfg, err := ccmConfig.ReadCloudConfig(strings.NewReader(`
 clusters:
 - url: https://127.0.0.1:8006/api2/json
   insecure: false
@@ -171,12 +172,12 @@ clusters:
 		},
 	)
 
-	cluster, err := proxmoxcluster.NewCluster(&cfg, &http.Client{})
+	cluster, err := pxpool.NewProxmoxPool(cfg.Clusters, &http.Client{})
 	if err != nil {
 		ts.T().Fatalf("failed to create cluster client: %v", err)
 	}
 
-	ts.i = newInstances(cluster, proxmoxcluster.ProviderDefault)
+	ts.i = newInstances(cluster, ccmConfig.ProviderDefault)
 }
 
 func (ts *ccmTestSuite) TearDownTest() {

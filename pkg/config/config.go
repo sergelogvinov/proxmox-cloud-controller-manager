@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+// Package config is the configuration for the cloud provider.
+package config
 
 import (
 	"fmt"
@@ -24,6 +25,8 @@ import (
 	"strings"
 
 	yaml "gopkg.in/yaml.v3"
+
+	pxpool "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 )
 
 // Provider specifies the provider. Can be 'default' or 'capmox'
@@ -40,15 +43,7 @@ type ClustersConfig struct {
 	Features struct {
 		Provider Provider `yaml:"provider,omitempty"`
 	} `yaml:"features,omitempty"`
-	Clusters []struct {
-		URL         string `yaml:"url"`
-		Insecure    bool   `yaml:"insecure,omitempty"`
-		TokenID     string `yaml:"token_id,omitempty"`
-		TokenSecret string `yaml:"token_secret,omitempty"`
-		Username    string `yaml:"username,omitempty"`
-		Password    string `yaml:"password,omitempty"`
-		Region      string `yaml:"region,omitempty"`
-	} `yaml:"clusters,omitempty"`
+	Clusters []*pxpool.ProxmoxCluster `yaml:"clusters,omitempty"`
 }
 
 // ReadCloudConfig reads cloud config from a reader.
