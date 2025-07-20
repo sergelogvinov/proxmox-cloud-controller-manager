@@ -44,7 +44,7 @@ func (mc *MetricContext) ObserveRequest(err error) error {
 }
 
 func registerAPIMetrics() *CSIMetrics {
-	metrics := &CSIMetrics{
+	m := &CSIMetrics{
 		Duration: metrics.NewHistogramVec(
 			&metrics.HistogramOpts{
 				Name:    "proxmox_api_request_duration_seconds",
@@ -59,9 +59,9 @@ func registerAPIMetrics() *CSIMetrics {
 	}
 
 	legacyregistry.MustRegister(
-		metrics.Duration,
-		metrics.Errors,
+		m.Duration,
+		m.Errors,
 	)
 
-	return metrics
+	return m
 }
