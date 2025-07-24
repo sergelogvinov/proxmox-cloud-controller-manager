@@ -23,14 +23,14 @@ import (
 	"strings"
 	"testing"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	ccmConfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
+	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
-	pxpool "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
+	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,7 +45,7 @@ type ccmTestSuite struct {
 }
 
 func (ts *ccmTestSuite) SetupTest() {
-	cfg, err := ccmConfig.ReadCloudConfig(strings.NewReader(`
+	cfg, err := providerconfig.ReadCloudConfig(strings.NewReader(`
 clusters:
 - url: https://127.0.0.1:8006/api2/json
   insecure: false
@@ -172,12 +172,12 @@ clusters:
 		},
 	)
 
-	cluster, err := pxpool.NewProxmoxPool(cfg.Clusters, &http.Client{})
+	cluster, err := proxmoxpool.NewProxmoxPool(cfg.Clusters, &http.Client{})
 	if err != nil {
 		ts.T().Fatalf("failed to create cluster client: %v", err)
 	}
 
-	ts.i = newInstances(cluster, ccmConfig.ProviderDefault)
+	ts.i = newInstances(cluster, providerconfig.ProviderDefault, providerconfig.NetworkOpts{})
 }
 
 func (ts *ccmTestSuite) TearDownTest() {
@@ -551,17 +551,26 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
 					},
 				},
+				Spec: v1.NodeSpec{
+					Taints: []v1.Taint{
+						{
+							Key:    cloudproviderapi.TaintExternalCloudProvider,
+							Value:  "true",
+							Effect: v1.TaintEffectNoSchedule,
+						},
+					},
+				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
 				ProviderID: "proxmox://cluster-1/100",
 				NodeAddresses: []v1.NodeAddress{
 					{
-						Type:    v1.NodeInternalIP,
-						Address: "1.2.3.4",
-					},
-					{
 						Type:    v1.NodeHostName,
 						Address: "cluster-1-node-1",
+					},
+					{
+						Type:    v1.NodeInternalIP,
+						Address: "1.2.3.4",
 					},
 				},
 				InstanceType: "4VCPU-10GB",
@@ -583,10 +592,23 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
 					},
 				},
+				Spec: v1.NodeSpec{
+					Taints: []v1.Taint{
+						{
+							Key:    cloudproviderapi.TaintExternalCloudProvider,
+							Value:  "true",
+							Effect: v1.TaintEffectNoSchedule,
+						},
+					},
+				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
 				ProviderID: "proxmox://cluster-1/100",
 				NodeAddresses: []v1.NodeAddress{
+					{
+						Type:    v1.NodeHostName,
+						Address: "cluster-1-node-1",
+					},
 					{
 						Type:    v1.NodeInternalIP,
 						Address: "1.2.3.4",
@@ -594,10 +616,6 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 					{
 						Type:    v1.NodeInternalIP,
 						Address: "2001::1",
-					},
-					{
-						Type:    v1.NodeHostName,
-						Address: "cluster-1-node-1",
 					},
 				},
 				InstanceType: "4VCPU-10GB",
@@ -619,17 +637,26 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 						SystemUUID: "3d3db687-89dd-473e-8463-6599f25b36a8",
 					},
 				},
+				Spec: v1.NodeSpec{
+					Taints: []v1.Taint{
+						{
+							Key:    cloudproviderapi.TaintExternalCloudProvider,
+							Value:  "true",
+							Effect: v1.TaintEffectNoSchedule,
+						},
+					},
+				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
 				ProviderID: "proxmox://cluster-2/100",
 				NodeAddresses: []v1.NodeAddress{
 					{
-						Type:    v1.NodeInternalIP,
-						Address: "1.2.3.4",
-					},
-					{
 						Type:    v1.NodeHostName,
 						Address: "cluster-2-node-1",
+					},
+					{
+						Type:    v1.NodeInternalIP,
+						Address: "1.2.3.4",
 					},
 				},
 				InstanceType: "c1.medium",
@@ -662,19 +689,19 @@ func TestGetProviderID(t *testing.T) {
 	tests := []struct {
 		msg      string
 		region   string
-		vmr      *pxapi.VmRef
+		vmr      *proxmox.VmRef
 		expected string
 	}{
 		{
 			msg:      "empty region",
 			region:   "",
-			vmr:      pxapi.NewVmRef(100),
+			vmr:      proxmox.NewVmRef(100),
 			expected: "proxmox:///100",
 		},
 		{
 			msg:      "region",
 			region:   "cluster1",
-			vmr:      pxapi.NewVmRef(100),
+			vmr:      proxmox.NewVmRef(100),
 			expected: "proxmox://cluster1/100",
 		},
 	}
@@ -698,7 +725,7 @@ func TestParseProviderID(t *testing.T) {
 		msg             string
 		magic           string
 		expectedCluster string
-		expectedVmr     *pxapi.VmRef
+		expectedVmr     *proxmox.VmRef
 		expectedError   error
 	}{
 		{
@@ -715,7 +742,7 @@ func TestParseProviderID(t *testing.T) {
 			msg:             "Empty region",
 			magic:           "proxmox:///100",
 			expectedCluster: "",
-			expectedVmr:     pxapi.NewVmRef(100),
+			expectedVmr:     proxmox.NewVmRef(100),
 		},
 		{
 			msg:           "Empty region",
@@ -726,7 +753,7 @@ func TestParseProviderID(t *testing.T) {
 			msg:             "Cluster and InstanceID",
 			magic:           "proxmox://cluster/100",
 			expectedCluster: "cluster",
-			expectedVmr:     pxapi.NewVmRef(100),
+			expectedVmr:     proxmox.NewVmRef(100),
 		},
 		{
 			msg:           "Cluster and wrong InstanceID",

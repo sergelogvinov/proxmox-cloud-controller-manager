@@ -22,11 +22,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	yaml "gopkg.in/yaml.v3"
 
-	pxpool "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
+	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 )
 
 // Provider specifies the provider. Can be 'default' or 'capmox'
@@ -38,12 +39,36 @@ const ProviderDefault Provider = "default"
 // ProviderCapmox is the Provider for capmox
 const ProviderCapmox Provider = "capmox"
 
+// NetworkMode specifies the network mode.
+type NetworkMode string
+
+const (
+	// NetworkModeDefault 'default' mode uses ips provided to the kubelet via --node-ip flags
+	NetworkModeDefault NetworkMode = "default"
+	// NetworkModeOnlyQemu 'qemu' mode tries to determine the ip addresses via the QEMU agent.
+	NetworkModeOnlyQemu NetworkMode = "qemu"
+	// NetworkModeAuto 'auto' attempts to use a combination of the above modes
+	NetworkModeAuto NetworkMode = "auto"
+)
+
+// ValidNetworkModes is a list of valid network modes.
+var ValidNetworkModes = []NetworkMode{NetworkModeDefault, NetworkModeOnlyQemu, NetworkModeAuto}
+
+// NetworkOpts specifies the network options for the cloud provider.
+type NetworkOpts struct {
+	ExternalIPCIDRS     string      `yaml:"external_ip_cidrs,omitempty"`
+	IPv6SupportDisabled bool        `yaml:"ipv6_support_disabled,omitempty"`
+	IPSortOrder         string      `yaml:"ip_sort_order,omitempty"`
+	Mode                NetworkMode `yaml:"mode,omitempty"`
+}
+
 // ClustersConfig is proxmox multi-cluster cloud config.
 type ClustersConfig struct {
 	Features struct {
-		Provider Provider `yaml:"provider,omitempty"`
+		Provider Provider    `yaml:"provider,omitempty"`
+		Network  NetworkOpts `yaml:"network,omitempty"`
 	} `yaml:"features,omitempty"`
-	Clusters []*pxpool.ProxmoxCluster `yaml:"clusters,omitempty"`
+	Clusters []*proxmoxpool.ProxmoxCluster `yaml:"clusters,omitempty"`
 }
 
 // ReadCloudConfig reads cloud config from a reader.
@@ -76,6 +101,15 @@ func ReadCloudConfig(config io.Reader) (ClustersConfig, error) {
 
 	if cfg.Features.Provider == "" {
 		cfg.Features.Provider = ProviderDefault
+	}
+
+	if cfg.Features.Network.Mode == "" {
+		cfg.Features.Network.Mode = NetworkModeDefault
+	}
+
+	// Validate network mode is valid
+	if !slices.Contains(ValidNetworkModes, cfg.Features.Network.Mode) {
+		return ClustersConfig{}, fmt.Errorf("invalid network mode: %s, valid modes are %v", cfg.Features.Network.Mode, ValidNetworkModes)
 	}
 
 	return cfg, nil

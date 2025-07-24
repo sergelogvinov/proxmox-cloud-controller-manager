@@ -60,6 +60,20 @@ linters:
     - intrange
     - noinlineerr
   settings:
+    importas:
+      alias:
+        - pkg: github.com/Telmate/proxmox-api-go/proxmox
+          alias: proxmoxapi
+        - pkg: github.com/sergelogvinov/proxmox-cloud-controller/manager/metrics
+          alias: metrics
+        - pkg: github.com/sergelogvinov/proxmox-cloud-controller/proxmoxpool
+          alias: proxmoxpool
+        - pkg: github.com/sergelogvinov/proxmox-cloud-controller/proxmox
+          alias: proxmox
+        - pkg: github.com/sergelogvinov/proxmox-cloud-controller/provider
+          alias: provider
+        - pkg: github.com/sergelogvinov/proxmox-cloud-controller/config
+          alias: providerconfig
     wsl_v5:
       allow-first-in-block: true
       allow-whole-block: false
@@ -69,7 +83,7 @@ linters:
     cyclop:
       max-complexity: 30
     dupl:
-      threshold: 100
+      threshold: 150
     errcheck:
       check-type-assertions: false
       check-blank: true

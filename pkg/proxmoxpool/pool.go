@@ -27,7 +27,7 @@ import (
 	"os"
 	"strings"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/proxmox-api-go/proxmox"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
@@ -46,14 +46,14 @@ type ProxmoxCluster struct {
 
 // ProxmoxPool is a Proxmox client.
 type ProxmoxPool struct {
-	clients map[string]*pxapi.Client
+	clients map[string]*proxmox.Client
 }
 
 // NewProxmoxPool creates a new Proxmox cluster client.
 func NewProxmoxPool(config []*ProxmoxCluster, hClient *http.Client) (*ProxmoxPool, error) {
 	clusters := len(config)
 	if clusters > 0 {
-		proxmox := make(map[string]*pxapi.Client, clusters)
+		clients := make(map[string]*proxmox.Client, clusters)
 
 		for _, cfg := range config {
 			tlsconf := &tls.Config{InsecureSkipVerify: true}
@@ -61,7 +61,7 @@ func NewProxmoxPool(config []*ProxmoxCluster, hClient *http.Client) (*ProxmoxPoo
 				tlsconf = nil
 			}
 
-			pClient, err := pxapi.NewClient(cfg.URL, hClient, os.Getenv("PM_HTTP_HEADERS"), tlsconf, "", 600)
+			pClient, err := proxmox.NewClient(cfg.URL, hClient, os.Getenv("PM_HTTP_HEADERS"), tlsconf, "", 600)
 			if err != nil {
 				return nil, err
 			}
@@ -74,11 +74,11 @@ func NewProxmoxPool(config []*ProxmoxCluster, hClient *http.Client) (*ProxmoxPoo
 				pClient.SetAPIToken(cfg.TokenID, cfg.TokenSecret)
 			}
 
-			proxmox[cfg.Region] = pClient
+			clients[cfg.Region] = pClient
 		}
 
 		return &ProxmoxPool{
-			clients: proxmox,
+			clients: clients,
 		}, nil
 	}
 
@@ -113,7 +113,7 @@ func (c *ProxmoxPool) CheckClusters(ctx context.Context) error {
 }
 
 // GetProxmoxCluster returns a Proxmox cluster client in a given region.
-func (c *ProxmoxPool) GetProxmoxCluster(region string) (*pxapi.Client, error) {
+func (c *ProxmoxPool) GetProxmoxCluster(region string) (*proxmox.Client, error) {
 	if c.clients[region] != nil {
 		return c.clients[region], nil
 	}
@@ -122,7 +122,7 @@ func (c *ProxmoxPool) GetProxmoxCluster(region string) (*pxapi.Client, error) {
 }
 
 // FindVMByNode find a VM by kubernetes node resource in all Proxmox clusters.
-func (c *ProxmoxPool) FindVMByNode(ctx context.Context, node *v1.Node) (*pxapi.VmRef, string, error) {
+func (c *ProxmoxPool) FindVMByNode(ctx context.Context, node *v1.Node) (*proxmox.VmRef, string, error) {
 	for region, px := range c.clients {
 		vmrs, err := px.GetVmRefsByName(ctx, node.Name)
 		if err != nil {
@@ -149,7 +149,7 @@ func (c *ProxmoxPool) FindVMByNode(ctx context.Context, node *v1.Node) (*pxapi.V
 }
 
 // FindVMByName find a VM by name in all Proxmox clusters.
-func (c *ProxmoxPool) FindVMByName(ctx context.Context, name string) (*pxapi.VmRef, string, error) {
+func (c *ProxmoxPool) FindVMByName(ctx context.Context, name string) (*proxmox.VmRef, string, error) {
 	for region, px := range c.clients {
 		vmr, err := px.GetVmRefByName(ctx, name)
 		if err != nil {
@@ -167,7 +167,7 @@ func (c *ProxmoxPool) FindVMByName(ctx context.Context, name string) (*pxapi.VmR
 }
 
 // FindVMByUUID find a VM by uuid in all Proxmox clusters.
-func (c *ProxmoxPool) FindVMByUUID(ctx context.Context, uuid string) (*pxapi.VmRef, string, error) {
+func (c *ProxmoxPool) FindVMByUUID(ctx context.Context, uuid string) (*proxmox.VmRef, string, error) {
 	for region, px := range c.clients {
 		vms, err := px.GetResourceList(ctx, "vm")
 		if err != nil {
@@ -184,8 +184,8 @@ func (c *ProxmoxPool) FindVMByUUID(ctx context.Context, uuid string) (*pxapi.VmR
 				continue
 			}
 
-			vmr := pxapi.NewVmRef(int(vm["vmid"].(float64))) //nolint:errcheck
-			vmr.SetNode(vm["node"].(string))                 //nolint:errcheck
+			vmr := proxmox.NewVmRef(int(vm["vmid"].(float64))) //nolint:errcheck
+			vmr.SetNode(vm["node"].(string))                   //nolint:errcheck
 			vmr.SetVmType("qemu")
 
 			config, err := px.GetVmConfig(ctx, vmr)
