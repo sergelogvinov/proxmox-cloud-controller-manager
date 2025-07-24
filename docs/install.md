@@ -71,6 +71,8 @@ clusters:
     region: cluster-1
 ```
 
+See [configuration documentation](config.md) for more details.
+
 ### Method 1: kubectl
 
 Upload it to the kubernetes:

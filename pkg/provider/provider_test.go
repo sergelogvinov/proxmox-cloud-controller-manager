@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"testing"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/stretchr/testify/assert"
 
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
@@ -55,7 +55,7 @@ func TestGetProviderID(t *testing.T) {
 		t.Run(fmt.Sprint(testCase.msg), func(t *testing.T) {
 			t.Parallel()
 
-			providerID := provider.GetProviderID(testCase.region, pxapi.NewVmRef(testCase.vmID))
+			providerID := provider.GetProviderID(testCase.region, proxmox.NewVmRef(testCase.vmID))
 
 			assert.Equal(t, testCase.expectedProviderID, providerID)
 		})

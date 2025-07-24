@@ -23,7 +23,7 @@ import (
 	"strconv"
 	"strings"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/proxmox-api-go/proxmox"
 )
 
 const (
@@ -34,7 +34,7 @@ const (
 var providerIDRegexp = regexp.MustCompile(`^` + ProviderName + `://([^/]*)/([^/]+)$`)
 
 // GetProviderID returns the magic providerID for kubernetes node.
-func GetProviderID(region string, vmr *pxapi.VmRef) string {
+func GetProviderID(region string, vmr *proxmox.VmRef) string {
 	return fmt.Sprintf("%s://%s/%d", ProviderName, region, vmr.VmId())
 }
 
@@ -63,7 +63,7 @@ func GetVMID(providerID string) (int, error) {
 }
 
 // ParseProviderID returns the VmRef and region from the providerID.
-func ParseProviderID(providerID string) (*pxapi.VmRef, string, error) {
+func ParseProviderID(providerID string) (*proxmox.VmRef, string, error) {
 	if !strings.HasPrefix(providerID, ProviderName) {
 		return nil, "", fmt.Errorf("foreign providerID or empty \"%s\"", providerID)
 	}
@@ -78,5 +78,5 @@ func ParseProviderID(providerID string) (*pxapi.VmRef, string, error) {
 		return nil, "", fmt.Errorf("InstanceID have to be a number, but got \"%s\"", matches[2])
 	}
 
-	return pxapi.NewVmRef(vmID), matches[1], nil
+	return proxmox.NewVmRef(vmID), matches[1], nil
 }

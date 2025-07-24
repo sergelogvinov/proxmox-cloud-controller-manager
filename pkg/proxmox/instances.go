@@ -19,16 +19,17 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"net"
 	"regexp"
 	"strconv"
 	"strings"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/proxmox-api-go/proxmox"
 
-	ccmConfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
+	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	metrics "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/metrics"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
-	pxpool "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
+	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 
 	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
@@ -36,17 +37,49 @@ import (
 	"k8s.io/klog/v2"
 )
 
+type instanceNetops struct {
+	ExternalCIDRs       []*net.IPNet
+	SortOrder           []*net.IPNet
+	IgnoredCIDRs        []*net.IPNet
+	Mode                providerconfig.NetworkMode
+	IPv6SupportDisabled bool
+}
+
 type instances struct {
-	c        *pxpool.ProxmoxPool
-	provider ccmConfig.Provider
+	c           *proxmoxpool.ProxmoxPool
+	provider    providerconfig.Provider
+	networkOpts instanceNetops
 }
 
 var instanceTypeNameRegexp = regexp.MustCompile(`(^[a-zA-Z0-9_.-]+)$`)
 
-func newInstances(client *pxpool.ProxmoxPool, provider ccmConfig.Provider) *instances {
+func newInstances(client *proxmoxpool.ProxmoxPool, provider providerconfig.Provider, networkOpts providerconfig.NetworkOpts) *instances {
+	externalIPCIDRs := ParseCIDRList(networkOpts.ExternalIPCIDRS)
+	if len(networkOpts.ExternalIPCIDRS) > 0 && len(externalIPCIDRs) == 0 {
+		klog.Warningf("Failed to parse external CIDRs: %v", networkOpts.ExternalIPCIDRS)
+	}
+
+	sortOrderCIDRs, ignoredCIDRs, err := ParseCIDRRuleset(networkOpts.IPSortOrder)
+	if err != nil {
+		klog.Errorf("Failed to parse sort order CIDRs: %v", err)
+	}
+
+	if len(networkOpts.IPSortOrder) > 0 && (len(sortOrderCIDRs)+len(ignoredCIDRs)) == 0 {
+		klog.Warningf("Failed to parse sort order CIDRs: %v", networkOpts.IPSortOrder)
+	}
+
+	netOps := instanceNetops{
+		ExternalCIDRs:       externalIPCIDRs,
+		SortOrder:           sortOrderCIDRs,
+		IgnoredCIDRs:        ignoredCIDRs,
+		Mode:                networkOpts.Mode,
+		IPv6SupportDisabled: networkOpts.IPv6SupportDisabled,
+	}
+
 	return &instances{
-		c:        client,
-		provider: provider,
+		c:           client,
+		provider:    provider,
+		networkOpts: netOps,
 	}
 }
 
@@ -132,85 +165,78 @@ func (i *instances) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, 
 func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloudprovider.InstanceMetadata, error) {
 	klog.V(4).InfoS("instances.InstanceMetadata() called", "node", klog.KRef("", node.Name))
 
-	if providedIP, ok := node.ObjectMeta.Annotations[cloudproviderapi.AnnotationAlphaProvidedIPAddr]; ok {
-		var (
-			vmRef  *pxapi.VmRef
-			region string
-			err    error
-		)
+	var (
+		vmRef  *proxmox.VmRef
+		region string
+		err    error
+	)
 
-		providerID := node.Spec.ProviderID
-		if providerID == "" {
-			uuid := node.Status.NodeInfo.SystemUUID
+	providerID := node.Spec.ProviderID
+	if providerID != "" && !strings.HasPrefix(providerID, provider.ProviderName) {
+		klog.V(4).InfoS("instances.InstanceMetadata() omitting unmanaged node", "node", klog.KObj(node), "providerID", providerID)
 
-			klog.V(4).InfoS("instances.InstanceMetadata() empty providerID, trying find node", "node", klog.KObj(node), "uuid", uuid)
-
-			mc := metrics.NewMetricContext("findVmByName")
-
-			vmRef, region, err = i.c.FindVMByNode(ctx, node)
-			if mc.ObserveRequest(err) != nil {
-				mc := metrics.NewMetricContext("findVmByUUID")
-
-				vmRef, region, err = i.c.FindVMByUUID(ctx, uuid)
-				if mc.ObserveRequest(err) != nil {
-					return nil, fmt.Errorf("instances.InstanceMetadata() - failed to find instance by name/uuid %s: %v, skipped", node.Name, err)
-				}
-			}
-
-			if i.provider == ccmConfig.ProviderCapmox {
-				providerID = provider.GetProviderIDFromUUID(uuid)
-			} else {
-				providerID = provider.GetProviderID(region, vmRef)
-			}
-		} else if !strings.HasPrefix(node.Spec.ProviderID, provider.ProviderName) {
-			klog.V(4).InfoS("instances.InstanceMetadata() omitting unmanaged node", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
-
-			return &cloudprovider.InstanceMetadata{}, nil
-		}
-
-		if vmRef == nil {
-			mc := metrics.NewMetricContext("getVmInfo")
-
-			vmRef, region, err = i.getInstance(ctx, node)
-			if mc.ObserveRequest(err) != nil {
-				return nil, err
-			}
-		}
-
-		addresses := []v1.NodeAddress{}
-
-		for _, ip := range strings.Split(providedIP, ",") {
-			addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: ip})
-		}
-
-		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeHostName, Address: node.Name})
-
-		instanceType, err := i.getInstanceType(ctx, vmRef, region)
-		if err != nil {
-			instanceType = vmRef.GetVmType()
-		}
-
-		return &cloudprovider.InstanceMetadata{
-			ProviderID:    providerID,
-			NodeAddresses: addresses,
-			InstanceType:  instanceType,
-			Zone:          vmRef.Node().String(),
-			Region:        region,
-		}, nil
+		return &cloudprovider.InstanceMetadata{}, nil
 	}
 
-	klog.InfoS(fmt.Sprintf(
-		"instances.InstanceMetadata() called: label %s missing from node. Was kubelet started without --cloud-provider=external?",
-		cloudproviderapi.AnnotationAlphaProvidedIPAddr),
-		node, klog.KRef("", node.Name))
+	if providerID == "" && HasTaintWithEffect(node, cloudproviderapi.TaintExternalCloudProvider, "") {
+		uuid := node.Status.NodeInfo.SystemUUID
 
-	return &cloudprovider.InstanceMetadata{}, nil
+		klog.V(4).InfoS("instances.InstanceMetadata() empty providerID, trying find node", "node", klog.KObj(node), "uuid", uuid)
+
+		mc := metrics.NewMetricContext("findVmByName")
+
+		vmRef, region, err = i.c.FindVMByNode(ctx, node)
+		if mc.ObserveRequest(err) != nil {
+			mc := metrics.NewMetricContext("findVmByUUID")
+
+			vmRef, region, err = i.c.FindVMByUUID(ctx, uuid)
+			if mc.ObserveRequest(err) != nil {
+				return nil, fmt.Errorf("instances.InstanceMetadata() - failed to find instance by name/uuid %s: %v, skipped", node.Name, err)
+			}
+		}
+
+		if i.provider == providerconfig.ProviderCapmox {
+			providerID = provider.GetProviderIDFromUUID(uuid)
+		} else {
+			providerID = provider.GetProviderID(region, vmRef)
+		}
+	}
+
+	if providerID == "" {
+		klog.V(4).InfoS("instances.InstanceMetadata() empty providerID, omitting unmanaged node", "node", klog.KObj(node))
+
+		return &cloudprovider.InstanceMetadata{}, nil
+	}
+
+	if vmRef == nil {
+		mc := metrics.NewMetricContext("getVmInfo")
+
+		vmRef, region, err = i.getInstance(ctx, node)
+		if mc.ObserveRequest(err) != nil {
+			return nil, err
+		}
+	}
+
+	addresses := i.addresses(ctx, node, vmRef, region)
+
+	instanceType, err := i.getInstanceType(ctx, vmRef, region)
+	if err != nil {
+		instanceType = vmRef.GetVmType()
+	}
+
+	return &cloudprovider.InstanceMetadata{
+		ProviderID:    providerID,
+		NodeAddresses: addresses,
+		InstanceType:  instanceType,
+		Zone:          vmRef.Node().String(),
+		Region:        region,
+	}, nil
 }
 
-func (i *instances) getInstance(ctx context.Context, node *v1.Node) (*pxapi.VmRef, string, error) {
+func (i *instances) getInstance(ctx context.Context, node *v1.Node) (*proxmox.VmRef, string, error) {
 	klog.V(4).InfoS("instances.getInstance() called", "node", klog.KRef("", node.Name), "provider", i.provider)
 
-	if i.provider == ccmConfig.ProviderCapmox {
+	if i.provider == providerconfig.ProviderCapmox {
 		uuid := node.Status.NodeInfo.SystemUUID
 
 		vmRef, region, err := i.c.FindVMByUUID(ctx, uuid)
@@ -253,7 +279,7 @@ func (i *instances) getInstance(ctx context.Context, node *v1.Node) (*pxapi.VmRe
 	return vmRef, region, nil
 }
 
-func (i *instances) getInstanceType(ctx context.Context, vmRef *pxapi.VmRef, region string) (string, error) {
+func (i *instances) getInstanceType(ctx context.Context, vmRef *proxmox.VmRef, region string) (string, error) {
 	px, err := i.c.GetProxmoxCluster(region)
 	if err != nil {
 		return "", err
