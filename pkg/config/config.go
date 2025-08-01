@@ -18,6 +18,7 @@ limitations under the License.
 package config
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -71,31 +72,41 @@ type ClustersConfig struct {
 	Clusters []*proxmoxpool.ProxmoxCluster `yaml:"clusters,omitempty"`
 }
 
+// Errors for Reading Cloud Config
+var (
+	ErrMissingPVERegion       = errors.New("missing PVE region in cloud config")
+	ErrMissingPVEAPIURL       = errors.New("missing PVE API URL in cloud config")
+	ErrAuthCredentialsMissing = errors.New("user or token credentials are required")
+	ErrInvalidAuthCredentials = errors.New("must specify one of user or token credentials, not both")
+	ErrInvalidCloudConfig     = errors.New("invalid cloud config")
+	ErrInvalidNetworkMode     = fmt.Errorf("invalid network mode, valid modes are %v", ValidNetworkModes)
+)
+
 // ReadCloudConfig reads cloud config from a reader.
 func ReadCloudConfig(config io.Reader) (ClustersConfig, error) {
 	cfg := ClustersConfig{}
 
 	if config != nil {
 		if err := yaml.NewDecoder(config).Decode(&cfg); err != nil {
-			return ClustersConfig{}, err
+			return ClustersConfig{}, errors.Join(ErrInvalidCloudConfig, err)
 		}
 	}
 
 	for idx, c := range cfg.Clusters {
 		if c.Username != "" && c.Password != "" {
 			if c.TokenID != "" || c.TokenSecret != "" {
-				return ClustersConfig{}, fmt.Errorf("cluster #%d: token_id and token_secret are not allowed when username and password are set", idx+1)
+				return ClustersConfig{}, fmt.Errorf("cluster #%d: %w", idx+1, ErrInvalidAuthCredentials)
 			}
 		} else if c.TokenID == "" || c.TokenSecret == "" {
-			return ClustersConfig{}, fmt.Errorf("cluster #%d: either username and password or token_id and token_secret are required", idx+1)
+			return ClustersConfig{}, fmt.Errorf("cluster #%d: %w", idx+1, ErrAuthCredentialsMissing)
 		}
 
 		if c.Region == "" {
-			return ClustersConfig{}, fmt.Errorf("cluster #%d: region is required", idx+1)
+			return ClustersConfig{}, fmt.Errorf("cluster #%d: %w", idx+1, ErrMissingPVERegion)
 		}
 
 		if c.URL == "" || !strings.HasPrefix(c.URL, "http") {
-			return ClustersConfig{}, fmt.Errorf("cluster #%d: url is required", idx+1)
+			return ClustersConfig{}, fmt.Errorf("cluster #%d: %w", idx+1, ErrMissingPVEAPIURL)
 		}
 	}
 
@@ -109,7 +120,7 @@ func ReadCloudConfig(config io.Reader) (ClustersConfig, error) {
 
 	// Validate network mode is valid
 	if !slices.Contains(ValidNetworkModes, cfg.Features.Network.Mode) {
-		return ClustersConfig{}, fmt.Errorf("invalid network mode: %s, valid modes are %v", cfg.Features.Network.Mode, ValidNetworkModes)
+		return ClustersConfig{}, ErrInvalidNetworkMode
 	}
 
 	return cfg, nil
