@@ -1,4 +1,25 @@
 
+<a name="v0.10.0"></a>
+## [v0.10.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.9.0...v0.10.0) (2025-07-24)
+
+Welcome to the v0.10.0 release of Kubernetes cloud controller manager for Proxmox!
+
+### Bug Fixes
+
+- makefile conformance stage
+
+### Features
+
+- add new network addressing features
+
+### Changelog
+
+* e1b8e9b feat: add new network addressing features
+* a8183c8 refactor: split cloud config module
+* 60f953d chore: bump deps
+* 2ebbf7a fix: makefile conformance stage
+* 628e7d6 chore: clearer error message
+
 <a name="v0.9.0"></a>
 ## [v0.9.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.8.0...v0.9.0) (2025-06-05)
 
@@ -10,6 +31,7 @@ Welcome to the v0.9.0 release of Kubernetes cloud controller manager for Proxmox
 
 ### Changelog
 
+* 7aba467 chore: release v0.9.0
 * e664b24 chore: bump deps
 * efb753c fix: cluster vm list
 * 5a645a2 chore: bump deps
