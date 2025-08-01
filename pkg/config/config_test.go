@@ -44,6 +44,7 @@ clusters:
 `))
 
 	assert.NotNil(t, err)
+	assert.ErrorIs(t, err, providerconfig.ErrInvalidCloudConfig)
 	assert.NotNil(t, cfg)
 
 	// Non full config
@@ -54,6 +55,7 @@ clusters:
 `))
 
 	assert.NotNil(t, err)
+	assert.ErrorIs(t, err, providerconfig.ErrAuthCredentialsMissing)
 	assert.NotNil(t, cfg)
 
 	// Valid config with one cluster
@@ -142,6 +144,7 @@ clusters:
     password: "secret"
 `))
 	assert.NotNil(t, err)
+	assert.ErrorIs(t, err, providerconfig.ErrMissingPVERegion)
 
 	// Errors when empty url
 	_, err = providerconfig.ReadCloudConfig(strings.NewReader(`
@@ -155,6 +158,7 @@ clusters:
     password: "secret"
 `))
 	assert.NotNil(t, err)
+	assert.ErrorIs(t, err, providerconfig.ErrMissingPVEAPIURL)
 
 	// Errors when invalid url protocol
 	_, err = providerconfig.ReadCloudConfig(strings.NewReader(`
@@ -168,6 +172,7 @@ clusters:
     password: "secret"
 `))
 	assert.NotNil(t, err)
+	assert.ErrorIs(t, err, providerconfig.ErrMissingPVEAPIURL)
 }
 
 func TestNetworkConfig(t *testing.T) {
