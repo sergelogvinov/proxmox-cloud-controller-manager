@@ -26,6 +26,9 @@ clusters:
     # Proxmox api token
     token_id: "kubernetes-csi@pve!csi"
     token_secret: "secret"
+    # (optional) Proxmox api token from separate file (s. Helm README.md)
+    # token_id_file: /run/secrets/region-1/token_id
+    # token_secret_file: /run/secrets/region-1/token_secret
     # Region name, which is cluster name
     region: Region-1
 

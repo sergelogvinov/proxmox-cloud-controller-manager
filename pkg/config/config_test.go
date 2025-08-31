@@ -58,6 +58,20 @@ clusters:
 	assert.ErrorIs(t, err, providerconfig.ErrAuthCredentialsMissing)
 	assert.NotNil(t, cfg)
 
+	// Valid config with one cluster and secret_file
+	cfg, err = providerconfig.ReadCloudConfig(strings.NewReader(`
+clusters:
+  - url: https://example.com
+    insecure: false
+    token_id_file: "/etc/proxmox-secrets/cluster1/token_id"
+    token_secret_file: "/etc/proxmox-secrets/cluster1/token_secret"
+    region: cluster-1
+`))
+	assert.Nil(t, err)
+	assert.NotNil(t, cfg)
+	assert.Equal(t, 1, len(cfg.Clusters))
+	assert.Equal(t, "/etc/proxmox-secrets/cluster1/token_id", cfg.Clusters[0].TokenIDFile)
+
 	// Valid config with one cluster
 	cfg, err = providerconfig.ReadCloudConfig(strings.NewReader(`
 clusters:
@@ -117,6 +131,21 @@ clusters:
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 1, len(cfg.Clusters))
 	assert.Equal(t, providerconfig.ProviderCapmox, cfg.Features.Provider)
+
+	// Errors when token_id/token_secret are set with token_id_file/token_secret_file
+	_, err = providerconfig.ReadCloudConfig(strings.NewReader(`
+features:
+  provider: 'capmox'
+clusters:
+  - url: https://example.com
+    insecure: false
+    token_id_file: "/etc/proxmox-secrets/cluster1/token_id"
+    token_secret_file: "/etc/proxmox-secrets/cluster1/token_secret"
+    token_id: "ha"
+    token_secret: "secret"
+    region: cluster-1
+`))
+	assert.NotNil(t, err)
 
 	// Errors when username/password are set with token_id/token_secret
 	_, err = providerconfig.ReadCloudConfig(strings.NewReader(`
