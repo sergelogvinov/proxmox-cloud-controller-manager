@@ -68,6 +68,56 @@ tolerations:
     effect: NoSchedule
 ```
 
+## Example for credentials from seperate Secrets
+```yaml
+# helm-values.yaml
+config:
+  clusters:
+    - url: https://cluster-api-1.exmple.com:8006/api2/json
+      insecure: false      
+      token_id_file: /run/secrets/cluster-1/token_id
+      token_secret_file: /run/secrets/cluster-1/token_secret
+      region: cluster-1
+    - url: https://cluster-api-2.exmple.com:8006/api2/json
+      insecure: false      
+      token_id_file: /run/secrets/cluster-2/token_id
+      token_secret_file: /run/secrets/cluster-2/token_secret
+      region: cluster-2
+extraVolumes:
+  - name: credentials-cluster-1
+    secret:
+      secretName: proxmox-credentials-cluster-1
+  - name: credentials-cluster-2
+    secret:
+      secretName: proxmox-credentials-cluster-2
+extraVolumeMounts:
+  - name: credentials-cluster-1
+    readOnly: true
+    mountPath: "/run/secrets/cluster-1"
+  - name: credentials-cluster-2
+    readOnly: true
+    mountPath: "/run/secrets/cluster-2"
+
+```
+```yaml
+# secrets-proxmox-clusters.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: proxmox-credentials-cluster-1
+stringData:
+  token_id: kubernetes@pve!csi
+  token_secret: key1
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: proxmox-credentials-cluster-2
+stringData:
+  token_id: kubernetes@pve!csi
+  token_secret: key2
+```
+
 Deploy chart:
 
 ```shell
