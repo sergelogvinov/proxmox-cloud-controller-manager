@@ -81,13 +81,16 @@ lint: ## Lint Code
 lint-fix: ## Fix Lint Issues
 	golangci-lint run --fix --config .golangci.yml
 
-
 .PHONY: unit
 unit: ## Unit Tests
 	go test -tags=unit $(shell go list ./...) $(TESTARGS)
 
 .PHONY: test
 test: lint unit ## Run all tests
+
+.PHONY: licenses
+licenses:
+	go-licenses check ./... --disallowed_types=forbidden,restricted,reciprocal,unknown
 
 .PHONY: conformance
 conformance: ## Conformance
