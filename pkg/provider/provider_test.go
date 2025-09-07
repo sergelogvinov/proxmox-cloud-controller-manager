@@ -20,13 +20,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/stretchr/testify/assert"
 
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
 )
 
-func TestGetProviderID(t *testing.T) {
+func TestGetProviderIDFromID(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -50,12 +49,10 @@ func TestGetProviderID(t *testing.T) {
 	}
 
 	for _, testCase := range tests {
-		testCase := testCase
-
 		t.Run(fmt.Sprint(testCase.msg), func(t *testing.T) {
 			t.Parallel()
 
-			providerID := provider.GetProviderID(testCase.region, proxmox.NewVmRef(testCase.vmID))
+			providerID := provider.GetProviderIDFromID(testCase.region, testCase.vmID)
 
 			assert.Equal(t, testCase.expectedProviderID, providerID)
 		})
@@ -109,8 +106,6 @@ func TestGetVmID(t *testing.T) {
 	}
 
 	for _, testCase := range tests {
-		testCase := testCase
-
 		t.Run(fmt.Sprint(testCase.msg), func(t *testing.T) {
 			t.Parallel()
 
@@ -118,7 +113,7 @@ func TestGetVmID(t *testing.T) {
 
 			if testCase.expectedError != nil {
 				assert.NotNil(t, err)
-				assert.Equal(t, err.Error(), testCase.expectedError.Error())
+				assert.EqualError(t, err, testCase.expectedError.Error())
 			} else {
 				assert.Equal(t, testCase.expectedvmID, VMID)
 			}
@@ -173,8 +168,6 @@ func TestParseProviderID(t *testing.T) {
 	}
 
 	for _, testCase := range tests {
-		testCase := testCase
-
 		t.Run(fmt.Sprint(testCase.msg), func(t *testing.T) {
 			t.Parallel()
 
@@ -182,7 +175,7 @@ func TestParseProviderID(t *testing.T) {
 
 			if testCase.expectedError != nil {
 				assert.NotNil(t, err)
-				assert.Equal(t, err.Error(), testCase.expectedError.Error())
+				assert.EqualError(t, err, testCase.expectedError.Error())
 			} else {
 				assert.NotNil(t, vmr)
 				assert.Equal(t, testCase.expectedvmID, vmr.VmId())

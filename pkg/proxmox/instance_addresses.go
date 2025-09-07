@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
 	"sort"
 	"strings"
 
@@ -38,19 +39,17 @@ const (
 	noSortPriority = 0
 )
 
-func (i *instances) addresses(ctx context.Context, node *v1.Node, vmRef *proxmox.VmRef, region string) []v1.NodeAddress {
-	klog.V(4).InfoS("instances.addresses() called", "node", klog.KObj(node))
-
+func (i *instances) addresses(ctx context.Context, node *v1.Node, info *instanceInfo) []v1.NodeAddress {
 	var (
 		providedIP string
 		ok         bool
 	)
 
 	if providedIP, ok = node.ObjectMeta.Annotations[cloudproviderapi.AnnotationAlphaProvidedIPAddr]; !ok {
-		klog.InfoS(fmt.Sprintf(
+		klog.ErrorS(ErrKubeletExternalProvider, fmt.Sprintf(
 			"instances.InstanceMetadata() called: annotation %s missing from node. Was kubelet started without --cloud-provider=external or --node-ip?",
 			cloudproviderapi.AnnotationAlphaProvidedIPAddr),
-			node, klog.KRef("", node.Name))
+			"node", klog.KRef("", node.Name))
 	}
 
 	// providedIP is supposed to be a single IP but some kubelets might set a comma separated list of IPs.
@@ -78,19 +77,18 @@ func (i *instances) addresses(ctx context.Context, node *v1.Node, vmRef *proxmox
 	}
 
 	if i.networkOpts.Mode == providerconfig.NetworkModeDefault {
-		// If the network mode is 'default', we only return the provided IPs.
 		klog.V(4).InfoS("instances.addresses() returning provided IPs", "node", klog.KObj(node))
 
 		return addresses
 	}
 
 	if i.networkOpts.Mode == providerconfig.NetworkModeOnlyQemu || i.networkOpts.Mode == providerconfig.NetworkModeAuto {
-		newAddresses, err := i.retrieveQemuAddresses(ctx, vmRef, region)
+		newAddresses, err := i.retrieveQemuAddresses(ctx, info)
 		if err != nil {
 			klog.ErrorS(err, "Failed to retrieve host addresses")
-		} else {
-			addToNodeAddresses(&addresses, newAddresses...)
 		}
+
+		addToNodeAddresses(&addresses, newAddresses...)
 	}
 
 	// Remove addresses that match the ignored CIDRs
@@ -109,29 +107,33 @@ func (i *instances) addresses(ctx context.Context, node *v1.Node, vmRef *proxmox
 
 	sortNodeAddresses(addresses, i.networkOpts.SortOrder)
 
-	klog.InfoS("instances.addresses() returning addresses", "addresses", addresses, "node", klog.KObj(node))
+	klog.V(4).InfoS("instances.addresses() returning addresses", "addresses", addresses, "node", klog.KObj(node))
 
 	return addresses
 }
 
 // retrieveQemuAddresses retrieves the addresses from the QEMU agent
-func (i *instances) retrieveQemuAddresses(ctx context.Context, vmRef *proxmox.VmRef, region string) ([]v1.NodeAddress, error) {
+func (i *instances) retrieveQemuAddresses(ctx context.Context, info *instanceInfo) ([]v1.NodeAddress, error) {
 	var addresses []v1.NodeAddress
 
-	klog.V(4).InfoS("retrieveQemuAddresses() retrieving addresses from QEMU agent")
+	vmRef := proxmox.NewVmRef(info.ID)
+	vmRef.SetNode(info.Node)
 
-	r, err := i.getInstanceNics(ctx, vmRef, region)
+	nics, err := i.getInstanceNics(ctx, vmRef, info.Region)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, nic := range r {
+	for _, nic := range nics {
+		if slices.Contains([]string{"lo", "cilium_net", "cilium_host"}, nic.Name) ||
+			strings.HasPrefix(nic.Name, "dummy") {
+			continue
+		}
+
 		for _, ip := range nic.IpAddresses {
 			i.processIP(ctx, &addresses, ip)
 		}
 	}
-
-	klog.V(4).InfoS("retrieveQemuAddresses() retrieved instance nics", "nics", r)
 
 	return addresses, nil
 }
@@ -141,40 +143,40 @@ func (i *instances) processIP(_ context.Context, addresses *[]v1.NodeAddress, ip
 		return
 	}
 
-	var isIPv6 bool
+	if ip.To4() == nil {
+		if i.networkOpts.IPv6SupportDisabled {
+			klog.V(4).InfoS("Skipping IPv6 address due to IPv6 support being disabled", "address", ip.String())
 
-	addressType := v1.NodeInternalIP
+			return
+		}
 
-	if isIPv6 = ip.To4() == nil; isIPv6 && i.networkOpts.IPv6SupportDisabled {
-		klog.V(4).InfoS("Skipping IPv6 address due to IPv6 support being disabled", "address", ip.String())
-
-		return // skip IPv6 addresses if IPv6 support is disabled
+		if ip.IsPrivate() || ip.IsLinkLocalUnicast() {
+			return
+		}
 	}
 
-	ipStr := ip.String()
-
-	// Check if the address is an external CIDR
+	addressType := v1.NodeInternalIP
 	if len(i.networkOpts.ExternalCIDRs) != 0 && isAddressInCIDRList(i.networkOpts.ExternalCIDRs, ip) {
 		addressType = v1.NodeExternalIP
 	}
 
 	*addresses = append(*addresses, v1.NodeAddress{
 		Type:    addressType,
-		Address: ipStr,
+		Address: ip.String(),
 	})
 }
 
 func (i *instances) getInstanceNics(ctx context.Context, vmRef *proxmox.VmRef, region string) ([]proxmox.AgentNetworkInterface, error) {
-	px, err := i.c.GetProxmoxCluster(region)
 	result := make([]proxmox.AgentNetworkInterface, 0)
 
+	px, err := i.c.pxpool.GetProxmoxCluster(region)
 	if err != nil {
 		return result, err
 	}
 
 	mc := metrics.NewMetricContext("getVmInfo")
-	nicset, err := px.GetVmAgentNetworkInterfaces(ctx, vmRef)
 
+	nicset, err := vmRef.GetAgentInformation(ctx, px, false)
 	if mc.ObserveRequest(err) != nil {
 		return result, err
 	}

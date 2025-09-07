@@ -36,15 +36,23 @@ const (
 
 	// ServiceAccountName is the service account name used in kube-system namespace.
 	ServiceAccountName = provider.ProviderName + "-cloud-controller-manager"
+
+	// Group name
+	Group = "proxmox.sinextra.dev"
 )
 
 type cloud struct {
-	client      *pxpool.ProxmoxPool
-	kclient     clientkubernetes.Interface
+	client *client
+
 	instancesV2 cloudprovider.InstancesV2
 
 	ctx  context.Context //nolint:containedctx
 	stop func()
+}
+
+type client struct {
+	pxpool  *pxpool.ProxmoxPool
+	kclient clientkubernetes.Interface
 }
 
 func init() {
@@ -61,7 +69,7 @@ func init() {
 }
 
 func newCloud(config *ccmConfig.ClustersConfig) (cloudprovider.Interface, error) {
-	client, err := pxpool.NewProxmoxPool(config.Clusters, nil)
+	client, err := newClient(config.Clusters)
 	if err != nil {
 		return nil, err
 	}
@@ -74,11 +82,22 @@ func newCloud(config *ccmConfig.ClustersConfig) (cloudprovider.Interface, error)
 	}, nil
 }
 
+func newClient(clusters []*pxpool.ProxmoxCluster) (*client, error) {
+	px, err := pxpool.NewProxmoxPool(clusters, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &client{
+		pxpool: px,
+	}, nil
+}
+
 // Initialize provides the cloud with a kubernetes client builder and may spawn goroutines
 // to perform housekeeping or run custom controllers specific to the cloud provider.
 // Any tasks started here should be cleaned up when the stop channel closes.
 func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, stop <-chan struct{}) {
-	c.kclient = clientBuilder.ClientOrDie(ServiceAccountName)
+	c.client.kclient = clientBuilder.ClientOrDie(ServiceAccountName)
 
 	klog.InfoS("clientset initialized")
 
@@ -86,7 +105,7 @@ func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, 
 	c.ctx = ctx
 	c.stop = cancel
 
-	err := c.client.CheckClusters(ctx)
+	err := c.client.pxpool.CheckClusters(ctx)
 	if err != nil {
 		klog.ErrorS(err, "failed to check proxmox cluster")
 	}

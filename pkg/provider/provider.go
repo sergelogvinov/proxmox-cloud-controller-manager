@@ -33,9 +33,9 @@ const (
 
 var providerIDRegexp = regexp.MustCompile(`^` + ProviderName + `://([^/]*)/([^/]+)$`)
 
-// GetProviderID returns the magic providerID for kubernetes node.
-func GetProviderID(region string, vmr *proxmox.VmRef) string {
-	return fmt.Sprintf("%s://%s/%d", ProviderName, region, vmr.VmId())
+// GetProviderIDFromID returns the magic providerID for kubernetes node.
+func GetProviderIDFromID(region string, vmID int) string {
+	return fmt.Sprintf("%s://%s/%d", ProviderName, region, vmID)
 }
 
 // GetProviderIDFromUUID returns the magic providerID for kubernetes node.

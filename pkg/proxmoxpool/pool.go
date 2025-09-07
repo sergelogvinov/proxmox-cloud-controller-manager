@@ -102,7 +102,7 @@ func NewProxmoxPool(config []*ProxmoxCluster, hClient *http.Client) (*ProxmoxPoo
 		}, nil
 	}
 
-	return nil, fmt.Errorf("no Proxmox clusters found")
+	return nil, ErrClustersNotFound
 }
 
 // CheckClusters checks if the Proxmox connection is working.
@@ -138,7 +138,34 @@ func (c *ProxmoxPool) GetProxmoxCluster(region string) (*proxmox.Client, error) 
 		return c.clients[region], nil
 	}
 
-	return nil, fmt.Errorf("proxmox cluster %s not found", region)
+	return nil, ErrRegionNotFound
+}
+
+// GetNodeGroup returns a Proxmox node ha-group in a given region.
+func (c *ProxmoxPool) GetNodeGroup(ctx context.Context, region string, node string) (string, error) {
+	px, err := c.GetProxmoxCluster(region)
+	if err != nil {
+		return "", err
+	}
+
+	haGroups, err := px.GetHAGroupList(ctx)
+	if err != nil {
+		return "", fmt.Errorf("error get ha-groups %v", err)
+	}
+
+	for _, g := range haGroups {
+		if g.Type != "group" {
+			continue
+		}
+
+		for _, n := range g.Nodes {
+			if node == strings.Split(n, ":")[0] {
+				return g.Group, nil
+			}
+		}
+	}
+
+	return "", ErrHAGroupNotFound
 }
 
 // FindVMByNode find a VM by kubernetes node resource in all Proxmox clusters.
@@ -165,7 +192,7 @@ func (c *ProxmoxPool) FindVMByNode(ctx context.Context, node *v1.Node) (*proxmox
 		}
 	}
 
-	return nil, "", fmt.Errorf("vm '%s' not found", node.Name)
+	return nil, "", ErrInstanceNotFound
 }
 
 // FindVMByName find a VM by name in all Proxmox clusters.
@@ -183,7 +210,7 @@ func (c *ProxmoxPool) FindVMByName(ctx context.Context, name string) (*proxmox.V
 		return vmr, region, nil
 	}
 
-	return nil, "", fmt.Errorf("vm '%s' not found", name)
+	return nil, "", ErrInstanceNotFound
 }
 
 // FindVMByUUID find a VM by uuid in all Proxmox clusters.
@@ -221,7 +248,7 @@ func (c *ProxmoxPool) FindVMByUUID(ctx context.Context, uuid string) (*proxmox.V
 		}
 	}
 
-	return nil, "", fmt.Errorf("vm with uuid '%s' not found", uuid)
+	return nil, "", ErrInstanceNotFound
 }
 
 // GetVMName returns the VM name.
