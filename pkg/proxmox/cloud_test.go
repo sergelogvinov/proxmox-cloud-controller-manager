@@ -24,13 +24,14 @@ import (
 
 	ccmConfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
+	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 )
 
 func TestNewCloudError(t *testing.T) {
 	cloud, err := newCloud(&ccmConfig.ClustersConfig{})
 	assert.NotNil(t, err)
 	assert.Nil(t, cloud)
-	assert.EqualError(t, err, "no Proxmox clusters found")
+	assert.Equal(t, proxmoxpool.ErrClustersNotFound, err)
 }
 
 func TestCloud(t *testing.T) {

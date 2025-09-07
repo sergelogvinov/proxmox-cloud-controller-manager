@@ -110,7 +110,7 @@ func TestCheckClusters(t *testing.T) {
 	pxapi, err := pClient.GetProxmoxCluster("test")
 	assert.NotNil(t, err)
 	assert.Nil(t, pxapi)
-	assert.Equal(t, "proxmox cluster test not found", err.Error())
+	assert.Equal(t, pxpool.ErrRegionNotFound, err)
 
 	pxapi, err = pClient.GetProxmoxCluster("cluster-1")
 	assert.Nil(t, err)
@@ -166,7 +166,7 @@ func TestFindVMByNameNonExist(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, "", cluster)
 	assert.Nil(t, vmr)
-	assert.Contains(t, err.Error(), "vm 'non-existing-vm' not found")
+	assert.Equal(t, pxpool.ErrInstanceNotFound, err)
 }
 
 func TestFindVMByNameExist(t *testing.T) {
@@ -235,8 +235,6 @@ func TestFindVMByNameExist(t *testing.T) {
 	}
 
 	for _, testCase := range tests {
-		testCase := testCase
-
 		t.Run(fmt.Sprint(testCase.msg), func(t *testing.T) {
 			vmr, cluster, err := pClient.FindVMByName(t.Context(), testCase.vmName)
 
@@ -249,7 +247,7 @@ func TestFindVMByNameExist(t *testing.T) {
 				assert.NotNil(t, err)
 				assert.Equal(t, "", cluster)
 				assert.Nil(t, vmr)
-				assert.Contains(t, err.Error(), "vm 'non-existing-vm' not found")
+				assert.Equal(t, pxpool.ErrInstanceNotFound, err)
 			}
 		})
 	}

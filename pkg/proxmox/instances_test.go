@@ -17,23 +17,20 @@ limitations under the License.
 package proxmox
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 
-	"github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/jarcoal/httpmock"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
-	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
 	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 	cloudprovider "k8s.io/cloud-provider"
 	cloudproviderapi "k8s.io/cloud-provider/api"
 )
@@ -62,7 +59,7 @@ clusters:
 		ts.T().Fatalf("failed to read config: %v", err)
 	}
 
-	httpmock.RegisterResponder("GET", "https://127.0.0.1:8006/api2/json/cluster/resources",
+	httpmock.RegisterResponderWithQuery("GET", "https://127.0.0.1:8006/api2/json/cluster/resources", "type=vm",
 		func(_ *http.Request) (*http.Response, error) {
 			return httpmock.NewJsonResponse(200, map[string]interface{}{
 				"data": []interface{}{
@@ -87,7 +84,7 @@ clusters:
 		},
 	)
 
-	httpmock.RegisterResponder("GET", "https://127.0.0.2:8006/api2/json/cluster/resources",
+	httpmock.RegisterResponderWithQuery("GET", "https://127.0.0.2:8006/api2/json/cluster/resources", "type=vm",
 		func(_ *http.Request) (*http.Response, error) {
 			return httpmock.NewJsonResponse(200, map[string]interface{}{
 				"data": []interface{}{
@@ -172,12 +169,17 @@ clusters:
 		},
 	)
 
-	cluster, err := proxmoxpool.NewProxmoxPool(cfg.Clusters, &http.Client{})
+	px, err := proxmoxpool.NewProxmoxPool(cfg.Clusters, &http.Client{})
 	if err != nil {
 		ts.T().Fatalf("failed to create cluster client: %v", err)
 	}
 
-	ts.i = newInstances(cluster, providerconfig.ProviderDefault, providerconfig.NetworkOpts{})
+	client := &client{
+		pxpool:  px,
+		kclient: fake.NewSimpleClientset(),
+	}
+
+	ts.i = newInstances(client, providerconfig.ProviderDefault, providerconfig.NetworkOpts{})
 }
 
 func (ts *ccmTestSuite) TearDownTest() {
@@ -221,7 +223,7 @@ func (ts *ccmTestSuite) TestInstanceExists() {
 				},
 			},
 			expected:      false,
-			expectedError: "instances.getInstance() error: proxmox cluster cluster-3 not found",
+			expectedError: "instances.getInstanceInfo() error: region not found",
 		},
 		{
 			msg: "NodeNotExists",
@@ -306,10 +308,8 @@ func (ts *ccmTestSuite) TestInstanceExists() {
 	}
 
 	for _, testCase := range tests {
-		testCase := testCase
-
 		ts.Run(fmt.Sprint(testCase.msg), func() {
-			exists, err := ts.i.InstanceExists(context.Background(), testCase.node)
+			exists, err := ts.i.InstanceExists(ts.T().Context(), testCase.node)
 
 			if testCase.expectedError != "" {
 				ts.Require().Error(err)
@@ -454,10 +454,8 @@ func (ts *ccmTestSuite) TestInstanceShutdown() {
 	}
 
 	for _, testCase := range tests {
-		testCase := testCase
-
 		ts.Run(fmt.Sprint(testCase.msg), func() {
-			exists, err := ts.i.InstanceShutdown(context.Background(), testCase.node)
+			exists, err := ts.i.InstanceShutdown(ts.T().Context(), testCase.node)
 
 			if testCase.expectedError != "" {
 				ts.Require().Error(err)
@@ -519,7 +517,7 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected:      &cloudprovider.InstanceMetadata{},
-			expectedError: "instances.getInstance() error: proxmox cluster cluster-3 not found",
+			expectedError: "instances.getInstanceInfo() error: region not found",
 		},
 		{
 			msg: "NodeNotExists",
@@ -667,10 +665,8 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 	}
 
 	for _, testCase := range tests {
-		testCase := testCase
-
 		ts.Run(fmt.Sprint(testCase.msg), func() {
-			meta, err := ts.i.InstanceMetadata(context.Background(), testCase.node)
+			meta, err := ts.i.InstanceMetadata(ts.T().Context(), testCase.node)
 
 			if testCase.expectedError != "" {
 				ts.Require().Error(err)
@@ -678,103 +674,6 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 			} else {
 				ts.Require().NoError(err)
 				ts.Require().Equal(testCase.expected, meta)
-			}
-		})
-	}
-}
-
-func TestGetProviderID(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		msg      string
-		region   string
-		vmr      *proxmox.VmRef
-		expected string
-	}{
-		{
-			msg:      "empty region",
-			region:   "",
-			vmr:      proxmox.NewVmRef(100),
-			expected: "proxmox:///100",
-		},
-		{
-			msg:      "region",
-			region:   "cluster1",
-			vmr:      proxmox.NewVmRef(100),
-			expected: "proxmox://cluster1/100",
-		},
-	}
-
-	for _, testCase := range tests {
-		testCase := testCase
-
-		t.Run(fmt.Sprint(testCase.msg), func(t *testing.T) {
-			t.Parallel()
-
-			expected := provider.GetProviderID(testCase.region, testCase.vmr)
-			assert.Equal(t, expected, testCase.expected)
-		})
-	}
-}
-
-func TestParseProviderID(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		msg             string
-		magic           string
-		expectedCluster string
-		expectedVmr     *proxmox.VmRef
-		expectedError   error
-	}{
-		{
-			msg:           "Empty magic string",
-			magic:         "",
-			expectedError: fmt.Errorf("foreign providerID or empty \"\""),
-		},
-		{
-			msg:           "Wrong provider",
-			magic:         "provider://region/100",
-			expectedError: fmt.Errorf("foreign providerID or empty \"provider://region/100\""),
-		},
-		{
-			msg:             "Empty region",
-			magic:           "proxmox:///100",
-			expectedCluster: "",
-			expectedVmr:     proxmox.NewVmRef(100),
-		},
-		{
-			msg:           "Empty region",
-			magic:         "proxmox://100",
-			expectedError: fmt.Errorf("providerID \"proxmox://100\" didn't match expected format \"proxmox://region/InstanceID\""),
-		},
-		{
-			msg:             "Cluster and InstanceID",
-			magic:           "proxmox://cluster/100",
-			expectedCluster: "cluster",
-			expectedVmr:     proxmox.NewVmRef(100),
-		},
-		{
-			msg:           "Cluster and wrong InstanceID",
-			magic:         "proxmox://cluster/name",
-			expectedError: fmt.Errorf("InstanceID have to be a number, but got \"name\""),
-		},
-	}
-
-	for _, testCase := range tests {
-		testCase := testCase
-
-		t.Run(fmt.Sprint(testCase.msg), func(t *testing.T) {
-			t.Parallel()
-
-			vmr, cluster, err := provider.ParseProviderID(testCase.magic)
-
-			if testCase.expectedError != nil {
-				assert.Equal(t, testCase.expectedError, err)
-			} else {
-				assert.Equal(t, testCase.expectedVmr, vmr)
-				assert.Equal(t, testCase.expectedCluster, cluster)
 			}
 		})
 	}
