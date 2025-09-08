@@ -63,12 +63,23 @@ type NetworkOpts struct {
 	Mode                NetworkMode `yaml:"mode,omitempty"`
 }
 
+// ClustersFeatures specifies the features for the cloud provider.
+type ClustersFeatures struct {
+	// HAGroup specifies if the provider should use HA groups to determine node zone.
+	// If enabled, the provider will use the HA group name as the zone name.
+	// If disabled, the provider will use the node's cluster name as the zone name.
+	// Default is false.
+	HAGroup bool `yaml:"ha_group,omitempty"`
+	// Provider specifies the provider to use. Can be 'default' or 'capmox'.
+	// Default is 'default'.
+	Provider Provider `yaml:"provider,omitempty"`
+	// Network specifies the network options for the cloud provider.
+	Network NetworkOpts `yaml:"network,omitempty"`
+}
+
 // ClustersConfig is proxmox multi-cluster cloud config.
 type ClustersConfig struct {
-	Features struct {
-		Provider Provider    `yaml:"provider,omitempty"`
-		Network  NetworkOpts `yaml:"network,omitempty"`
-	} `yaml:"features,omitempty"`
+	Features ClustersFeatures              `yaml:"features,omitempty"`
 	Clusters []*proxmoxpool.ProxmoxCluster `yaml:"clusters,omitempty"`
 }
 

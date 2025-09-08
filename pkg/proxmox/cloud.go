@@ -74,7 +74,7 @@ func newCloud(config *ccmConfig.ClustersConfig) (cloudprovider.Interface, error)
 		return nil, err
 	}
 
-	instancesInterface := newInstances(client, config.Features.Provider, config.Features.Network)
+	instancesInterface := newInstances(client, config.Features)
 
 	return &cloud{
 		client:      client,
