@@ -1,6 +1,27 @@
 
+<a name="v0.11.0"></a>
+## [v0.11.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.10.0...v0.11.0) (2025-09-08)
+
+Welcome to the v0.11.0 release of Kubernetes cloud controller manager for Proxmox!
+
+### Features
+
+- use proxmox ha-group as zone name
+- add extra labels
+- add config options token_id_file & token_secret_file
+- add named errors to cloud config
+
+### Changelog
+
+* 27c3e62 feat: use proxmox ha-group as zone name
+* 229be14 feat: add extra labels
+* b77455a refactor: instance metadata
+* 2066aa8 chore: bump deps
+* 8ef4bce feat: add config options token_id_file & token_secret_file
+* 144b1c7 feat: add named errors to cloud config
+
 <a name="v0.10.0"></a>
-## [v0.10.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.9.0...v0.10.0) (2025-07-24)
+## [v0.10.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.9.0...v0.10.0) (2025-08-01)
 
 Welcome to the v0.10.0 release of Kubernetes cloud controller manager for Proxmox!
 
@@ -14,6 +35,7 @@ Welcome to the v0.10.0 release of Kubernetes cloud controller manager for Proxmo
 
 ### Changelog
 
+* 1ce4ade chore: release v0.10.0
 * e1b8e9b feat: add new network addressing features
 * a8183c8 refactor: split cloud config module
 * 60f953d chore: bump deps

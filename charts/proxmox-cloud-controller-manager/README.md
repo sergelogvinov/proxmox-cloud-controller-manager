@@ -1,6 +1,6 @@
 # proxmox-cloud-controller-manager
 
-![Version: 0.2.15](https://img.shields.io/badge/Version-0.2.15-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.10.0](https://img.shields.io/badge/AppVersion-v0.10.0-informational?style=flat-square)
+![Version: 0.2.17](https://img.shields.io/badge/Version-0.2.17-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.11.0](https://img.shields.io/badge/AppVersion-v0.11.0-informational?style=flat-square)
 
 Cloud Controller Manager plugin for Proxmox
 
@@ -68,18 +68,18 @@ tolerations:
     effect: NoSchedule
 ```
 
-## Example for credentials from seperate Secrets
+## Example for credentials from separate Secrets
 ```yaml
 # helm-values.yaml
 config:
   clusters:
     - url: https://cluster-api-1.exmple.com:8006/api2/json
-      insecure: false      
+      insecure: false
       token_id_file: /run/secrets/cluster-1/token_id
       token_secret_file: /run/secrets/cluster-1/token_secret
       region: cluster-1
     - url: https://cluster-api-2.exmple.com:8006/api2/json
-      insecure: false      
+      insecure: false
       token_id_file: /run/secrets/cluster-2/token_id
       token_secret_file: /run/secrets/cluster-2/token_secret
       region: cluster-2
