@@ -50,6 +50,12 @@ metadata:
     topology.kubernetes.io/region: cluster-1
     # Proxmox hypervisor host machine name
     topology.kubernetes.io/zone: pve-node-1
+
+    # Proxmox specific labels
+    topology.proxmox.sinextra.dev/region: cluster-1
+    topology.proxmox.sinextra.dev/node: pve-node-1
+    topology.proxmox.sinextra.dev/ha-group: default
+
   name: worker-1
 spec:
   ...
