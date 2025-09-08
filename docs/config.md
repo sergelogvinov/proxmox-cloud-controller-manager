@@ -17,6 +17,8 @@ features:
   # The IPs that do not match the CIDRs will be kept in the order they
   # were detected.
   ip_sort_order: '192.168.0.0/16,2001:db8:85a3::8a2e:370:7334/112'
+  # Enable use of Proxmox HA group as a zone label
+  ha_group: true|false
 
 clusters:
   # List of Proxmox clusters
@@ -56,6 +58,7 @@ You can define multiple clusters in the `clusters` section.
 * `network` - Defines how the network addresses are handled by the CCM. The default value is `default`, which uses the kubelet argument `--node-ips` to assign IPs to the node resource. The `qemu` mode uses the QEMU agent API to retrieve network addresses from the virtual machine, while auto attempts to detect the best mode automatically.
 * `ipv6_support_disabled` - Set to `true` to ignore any IPv6 addresses. The default is `false`.
 * `external_ip_cidrs` - A comma-separated list of external IP address CIDRs. You can use `!` to exclude a CIDR from the list. This is useful for defining which IPs should be considered external and not included in the node addresses.
-
+* `ip_sort_order` - A comma-separated list defining the order in which IP addresses should be sorted. The IPs that do not match the CIDRs will be kept in the order they were detected.
+* `ha_group` - Set to `true` to enable the use of Proxmox HA group as a zone label. The default is `false`.
 
 For more information about the network modes, see the [Networking documentation](networking.md).
