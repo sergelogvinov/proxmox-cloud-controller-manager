@@ -69,9 +69,17 @@ func init() {
 }
 
 func newCloud(config *ccmConfig.ClustersConfig) (cloudprovider.Interface, error) {
-	client, err := newClient(config.Clusters)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	px, err := pxpool.NewProxmoxPool(ctx, config.Clusters)
 	if err != nil {
+		cancel()
+
 		return nil, err
+	}
+
+	client := &client{
+		pxpool: px,
 	}
 
 	instancesInterface := newInstances(client, config.Features)
@@ -79,17 +87,8 @@ func newCloud(config *ccmConfig.ClustersConfig) (cloudprovider.Interface, error)
 	return &cloud{
 		client:      client,
 		instancesV2: instancesInterface,
-	}, nil
-}
-
-func newClient(clusters []*pxpool.ProxmoxCluster) (*client, error) {
-	px, err := pxpool.NewProxmoxPool(clusters, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &client{
-		pxpool: px,
+		ctx:         ctx,
+		stop:        cancel,
 	}, nil
 }
 
@@ -101,11 +100,7 @@ func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, 
 
 	klog.InfoS("clientset initialized")
 
-	ctx, cancel := context.WithCancel(context.Background())
-	c.ctx = ctx
-	c.stop = cancel
-
-	err := c.client.pxpool.CheckClusters(ctx)
+	err := c.client.pxpool.CheckClusters(c.ctx)
 	if err != nil {
 		klog.ErrorS(err, "failed to check proxmox cluster")
 	}

@@ -24,8 +24,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Telmate/proxmox-api-go/proxmox"
-
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	metrics "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/metrics"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
@@ -142,7 +140,7 @@ func (i *instances) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, 
 		return false, nil
 	}
 
-	vmr, region, err := provider.ParseProviderID(node.Spec.ProviderID)
+	vmID, region, err := provider.ParseProviderID(node.Spec.ProviderID)
 	if err != nil {
 		klog.ErrorS(err, "instances.InstanceShutdown() failed to parse providerID", "providerID", node.Spec.ProviderID)
 
@@ -158,12 +156,12 @@ func (i *instances) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, 
 
 	mc := metrics.NewMetricContext("getVmState")
 
-	vmState, err := px.GetVmState(ctx, vmr)
+	vm, err := px.GetVMStatus(ctx, vmID)
 	if mc.ObserveRequest(err) != nil {
 		return false, err
 	}
 
-	if vmState["status"].(string) == "stopped" { //nolint:errcheck
+	if vm.Status == "stopped" {
 		return true, nil
 	}
 
@@ -258,7 +256,7 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 	klog.V(4).InfoS("instances.getInstanceInfo() called", "node", klog.KRef("", node.Name), "provider", i.provider)
 
 	var (
-		vmRef  *proxmox.VmRef
+		vmID   int
 		region string
 		err    error
 	)
@@ -270,7 +268,7 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 			region = node.Labels[v1.LabelTopologyRegion]
 		}
 
-		vmID, err := strconv.Atoi(node.Annotations[AnnotationProxmoxInstanceID])
+		vmID, err = strconv.Atoi(node.Annotations[AnnotationProxmoxInstanceID])
 		if err != nil {
 			return nil, fmt.Errorf("instances.getInstanceInfo() parse annotation error: %v", err)
 		}
@@ -287,31 +285,31 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 
 		mc := metrics.NewMetricContext("findVmByName")
 
-		vmRef, region, err = i.c.pxpool.FindVMByNode(ctx, node)
+		vmID, region, err = i.c.pxpool.FindVMByNode(ctx, node)
 		if mc.ObserveRequest(err) != nil {
 			mc := metrics.NewMetricContext("findVmByUUID")
 
-			vmRef, region, err = i.c.pxpool.FindVMByUUID(ctx, node.Status.NodeInfo.SystemUUID)
+			vmID, region, err = i.c.pxpool.FindVMByUUID(ctx, node.Status.NodeInfo.SystemUUID)
 			if mc.ObserveRequest(err) != nil {
 				return nil, err
 			}
 		}
 
-		if vmRef == nil {
+		if vmID == 0 {
 			return nil, cloudprovider.InstanceNotFound
 		}
 
-		providerID = provider.GetProviderIDFromID(region, vmRef.VmId())
+		providerID = provider.GetProviderIDFromID(region, vmID)
 	}
 
-	if vmRef == nil {
-		vmRef, region, err = provider.ParseProviderID(providerID)
+	if vmID == 0 {
+		vmID, region, err = provider.ParseProviderID(providerID)
 		if err != nil {
 			if i.provider == providerconfig.ProviderDefault {
 				return nil, fmt.Errorf("instances.getInstanceInfo() error: %v", err)
 			}
 
-			vmRef, region, err = i.c.pxpool.FindVMByUUID(ctx, node.Status.NodeInfo.SystemUUID)
+			vmID, region, err = i.c.pxpool.FindVMByUUID(ctx, node.Status.NodeInfo.SystemUUID)
 			if err != nil {
 				return nil, fmt.Errorf("instances.getInstanceInfo() error: %v", err)
 			}
@@ -325,7 +323,7 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 
 	mc := metrics.NewMetricContext("getVmInfo")
 
-	vmConfig, err := px.GetVmConfig(ctx, vmRef)
+	vm, err := px.GetVMConfig(ctx, vmID)
 	if mc.ObserveRequest(err) != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return nil, cloudprovider.InstanceNotFound
@@ -335,12 +333,12 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 	}
 
 	info := &instanceInfo{
-		ID:     vmRef.VmId(),
-		UUID:   i.c.pxpool.GetVMUUID(vmConfig),
-		Name:   i.c.pxpool.GetVMName(vmConfig),
-		Node:   vmRef.Node().String(),
+		ID:     vmID,
+		UUID:   i.c.pxpool.GetVMUUID(vm),
+		Name:   vm.Name,
+		Node:   vm.Node,
 		Region: region,
-		Zone:   vmRef.Node().String(),
+		Zone:   vm.Node,
 	}
 
 	if info.UUID != node.Status.NodeInfo.SystemUUID {
@@ -355,18 +353,9 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 		return nil, cloudprovider.InstanceNotFound
 	}
 
-	info.Type = i.c.pxpool.GetVMSKU(vmConfig)
+	info.Type = i.c.pxpool.GetVMSKU(vm)
 	if !instanceTypeNameRegexp.MatchString(info.Type) {
-		if vmConfig["cores"] != nil && vmConfig["memory"] != nil {
-			memory, err := strconv.Atoi(vmConfig["memory"].(string))
-			if err != nil {
-				return info, err
-			}
-
-			info.Type = fmt.Sprintf("%.0fVCPU-%.0fGB",
-				vmConfig["cores"].(float64), //nolint:errcheck
-				float64(memory)/1024)
-		}
+		info.Type = fmt.Sprintf("%dVCPU-%dGB", vm.CPUs, vm.MaxMem/1024/1024/1024)
 	}
 
 	return info, nil

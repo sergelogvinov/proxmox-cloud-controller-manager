@@ -177,8 +177,7 @@ func TestParseProviderID(t *testing.T) {
 				assert.NotNil(t, err)
 				assert.EqualError(t, err, testCase.expectedError.Error())
 			} else {
-				assert.NotNil(t, vmr)
-				assert.Equal(t, testCase.expectedvmID, vmr.VmId())
+				assert.Equal(t, testCase.expectedvmID, vmr)
 				assert.Equal(t, testCase.expectedRegion, region)
 			}
 		})
