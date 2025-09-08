@@ -29,10 +29,17 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	clientkubernetes "k8s.io/client-go/kubernetes"
+	cloudproviderapi "k8s.io/cloud-provider/api"
+	cloudnodeutil "k8s.io/cloud-provider/node/helpers"
 )
 
 // ErrorCIDRConflict is the error message formatting string for CIDR conflicts
 const ErrorCIDRConflict = "CIDR %s intersects with ignored CIDR %s"
+
+var uninitializedTaint = &corev1.Taint{
+	Key:    cloudproviderapi.TaintExternalCloudProvider,
+	Effect: corev1.TaintEffectNoSchedule,
+}
 
 // SplitTrim splits a string of values separated by sep rune into a slice of
 // strings with trimmed spaces.
@@ -106,24 +113,18 @@ func ParseCIDRList(cidrList string) []*net.IPNet {
 	return cidrs
 }
 
-// HasTaintWithEffect checks if a node has a specific taint with the given key and effect.
-// An empty effect string will match any effect for the specified key
-func HasTaintWithEffect(node *corev1.Node, key, effect string) bool {
-	for _, taint := range node.Spec.Taints {
-		if taint.Key == key {
-			if effect != "" {
-				return string(taint.Effect) == effect
-			}
+func checkIPIntersects(n1, n2 *net.IPNet) bool {
+	return n2.Contains(n1.IP) || n1.Contains(n2.IP)
+}
 
+func hasUninitializedTaint(node *corev1.Node) bool {
+	for _, taint := range node.Spec.Taints {
+		if taint.MatchTaint(uninitializedTaint) {
 			return true
 		}
 	}
 
 	return false
-}
-
-func checkIPIntersects(n1, n2 *net.IPNet) bool {
-	return n2.Contains(n1.IP) || n1.Contains(n2.IP)
 }
 
 func syncNodeAnnotations(ctx context.Context, kclient clientkubernetes.Interface, node *corev1.Node, nodeAnnotations map[string]string) error {
@@ -163,6 +164,25 @@ func syncNodeAnnotations(ctx context.Context, kclient clientkubernetes.Interface
 
 		if _, err := kclient.CoreV1().Nodes().Patch(ctx, node.Name, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{}); err != nil {
 			return fmt.Errorf("failed to patch the node: %v", err)
+		}
+	}
+
+	return nil
+}
+
+func syncNodeLabels(c *client, node *corev1.Node, nodeLabels map[string]string) error {
+	nodeLabelsOrig := node.ObjectMeta.Labels
+	labelsToUpdate := map[string]string{}
+
+	for k, v := range nodeLabels {
+		if r, ok := nodeLabelsOrig[k]; !ok || r != v {
+			labelsToUpdate[k] = v
+		}
+	}
+
+	if len(labelsToUpdate) > 0 {
+		if !cloudnodeutil.AddOrUpdateLabelsOnNode(c.kclient, labelsToUpdate, node) {
+			return fmt.Errorf("failed update labels for node %s", node.Name)
 		}
 	}
 

@@ -574,6 +574,10 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 				InstanceType: "4VCPU-10GB",
 				Region:       "cluster-1",
 				Zone:         "pve-1",
+				AdditionalLabels: map[string]string{
+					"topology.proxmox.sinextra.dev/node":   "pve-1",
+					"topology.proxmox.sinextra.dev/region": "cluster-1",
+				},
 			},
 		},
 		{
@@ -619,6 +623,10 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 				InstanceType: "4VCPU-10GB",
 				Region:       "cluster-1",
 				Zone:         "pve-1",
+				AdditionalLabels: map[string]string{
+					"topology.proxmox.sinextra.dev/node":   "pve-1",
+					"topology.proxmox.sinextra.dev/region": "cluster-1",
+				},
 			},
 		},
 		{
@@ -660,6 +668,10 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 				InstanceType: "c1.medium",
 				Region:       "cluster-2",
 				Zone:         "pve-3",
+				AdditionalLabels: map[string]string{
+					"topology.proxmox.sinextra.dev/node":   "pve-3",
+					"topology.proxmox.sinextra.dev/region": "cluster-2",
+				},
 			},
 		},
 	}

@@ -190,9 +190,6 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 		return &cloudprovider.InstanceMetadata{}, nil
 	}
 
-	// if providerID == "" && HasTaintWithEffect(node, cloudproviderapi.TaintExternalCloudProvider, "") {
-	// }
-
 	mc := metrics.NewMetricContext("getInstanceInfo")
 
 	info, err = i.getInstanceInfo(ctx, node)
@@ -204,6 +201,11 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 		}
 
 		return nil, err
+	}
+
+	additionalLabels := map[string]string{
+		LabelTopologyRegion: info.Region,
+		LabelTopologyNode:   info.Node,
 	}
 
 	if providerID == "" {
@@ -222,12 +224,19 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 		}
 	}
 
+	if len(additionalLabels) > 0 && !hasUninitializedTaint(node) {
+		if err := syncNodeLabels(i.c, node, additionalLabels); err != nil {
+			klog.ErrorS(err, "error updating labels for the node", "node", klog.KRef("", node.Name))
+		}
+	}
+
 	metadata := &cloudprovider.InstanceMetadata{
-		ProviderID:    providerID,
-		NodeAddresses: i.addresses(ctx, node, info),
-		InstanceType:  info.Type,
-		Zone:          info.Zone,
-		Region:        info.Region,
+		ProviderID:       providerID,
+		NodeAddresses:    i.addresses(ctx, node, info),
+		InstanceType:     info.Type,
+		Zone:             info.Zone,
+		Region:           info.Region,
+		AdditionalLabels: additionalLabels,
 	}
 
 	klog.V(5).InfoS("instances.InstanceMetadata()", "info", info, "metadata", metadata)
@@ -246,7 +255,10 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 
 	providerID := node.Spec.ProviderID
 	if providerID == "" && node.Annotations[AnnotationProxmoxInstanceID] != "" {
-		region = node.Annotations[v1.LabelTopologyRegion]
+		region = node.Labels[LabelTopologyRegion]
+		if region == "" {
+			region = node.Labels[v1.LabelTopologyRegion]
+		}
 
 		vmID, err := strconv.Atoi(node.Annotations[AnnotationProxmoxInstanceID])
 		if err != nil {

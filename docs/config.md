@@ -52,7 +52,7 @@ You can define multiple clusters in the `clusters` section.
 
 ## Feature flags
 
-* `provider` - Set the provider type. The default is `default`, which uses provider-id to define the Proxmox VM ID. The `capmox` value is used for working with the Cluster API for Proxmox (CAPMox).
+* `provider` - Set the provider type. The default is `default`, which uses provider-id format `proxmox://<region>/<vm-id>`. The `capmox` value is used for working with the Cluster API for Proxmox (CAPMox), which uses provider-id format `proxmox://<SystemUUID>`.
 * `network` - Defines how the network addresses are handled by the CCM. The default value is `default`, which uses the kubelet argument `--node-ips` to assign IPs to the node resource. The `qemu` mode uses the QEMU agent API to retrieve network addresses from the virtual machine, while auto attempts to detect the best mode automatically.
 * `ipv6_support_disabled` - Set to `true` to ignore any IPv6 addresses. The default is `false`.
 * `external_ip_cidrs` - A comma-separated list of external IP address CIDRs. You can use `!` to exclude a CIDR from the list. This is useful for defining which IPs should be considered external and not included in the node addresses.
