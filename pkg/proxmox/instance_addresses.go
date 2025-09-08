@@ -25,7 +25,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/luthermonson/go-proxmox"
 
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	metrics "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/metrics"
@@ -116,10 +116,7 @@ func (i *instances) addresses(ctx context.Context, node *v1.Node, info *instance
 func (i *instances) retrieveQemuAddresses(ctx context.Context, info *instanceInfo) ([]v1.NodeAddress, error) {
 	var addresses []v1.NodeAddress
 
-	vmRef := proxmox.NewVmRef(info.ID)
-	vmRef.SetNode(info.Node)
-
-	nics, err := i.getInstanceNics(ctx, vmRef, info.Region)
+	nics, err := i.getInstanceNics(ctx, info)
 	if err != nil {
 		return nil, err
 	}
@@ -130,15 +127,16 @@ func (i *instances) retrieveQemuAddresses(ctx context.Context, info *instanceInf
 			continue
 		}
 
-		for _, ip := range nic.IpAddresses {
-			i.processIP(ctx, &addresses, ip)
+		for _, ip := range nic.IPAddresses {
+			i.processIP(ctx, &addresses, ip.IPAddress)
 		}
 	}
 
 	return addresses, nil
 }
 
-func (i *instances) processIP(_ context.Context, addresses *[]v1.NodeAddress, ip net.IP) {
+func (i *instances) processIP(_ context.Context, addresses *[]v1.NodeAddress, addr string) {
+	ip := net.ParseIP(addr)
 	if ip == nil || ip.IsLoopback() {
 		return
 	}
@@ -166,17 +164,27 @@ func (i *instances) processIP(_ context.Context, addresses *[]v1.NodeAddress, ip
 	})
 }
 
-func (i *instances) getInstanceNics(ctx context.Context, vmRef *proxmox.VmRef, region string) ([]proxmox.AgentNetworkInterface, error) {
-	result := make([]proxmox.AgentNetworkInterface, 0)
+func (i *instances) getInstanceNics(ctx context.Context, info *instanceInfo) ([]*proxmox.AgentNetworkIface, error) {
+	result := make([]*proxmox.AgentNetworkIface, 0)
 
-	px, err := i.c.pxpool.GetProxmoxCluster(region)
+	px, err := i.c.pxpool.GetProxmoxCluster(info.Region)
 	if err != nil {
 		return result, err
 	}
 
+	node, err := px.Node(ctx, info.Node)
+	if err != nil {
+		return nil, err
+	}
+
+	vm, err := node.VirtualMachine(ctx, info.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	mc := metrics.NewMetricContext("getVmInfo")
 
-	nicset, err := vmRef.GetAgentInformation(ctx, px, false)
+	nicset, err := vm.AgentGetNetworkIFaces(ctx)
 	if mc.ObserveRequest(err) != nil {
 		return result, err
 	}

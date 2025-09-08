@@ -23,8 +23,10 @@ import (
 	"testing"
 
 	"github.com/jarcoal/httpmock"
+	proxmox "github.com/luthermonson/go-proxmox"
 	"github.com/stretchr/testify/suite"
 
+	goproxmox "github.com/sergelogvinov/go-proxmox"
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 
@@ -58,6 +60,31 @@ clusters:
 	if err != nil {
 		ts.T().Fatalf("failed to read config: %v", err)
 	}
+
+	httpmock.RegisterResponder(http.MethodGet, `=~/cluster/status`,
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(200, map[string]any{
+				"data": proxmox.NodeStatuses{{Name: "pve-1"}, {Name: "pve-2"}, {Name: "pve-3"}},
+			})
+		})
+	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-1/status`,
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(200, map[string]any{
+				"data": proxmox.Node{},
+			})
+		})
+	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-2/status`,
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(200, map[string]any{
+				"data": proxmox.Node{},
+			})
+		})
+	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-3/status`,
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(200, map[string]any{
+				"data": proxmox.Node{},
+			})
+		})
 
 	httpmock.RegisterResponderWithQuery("GET", "https://127.0.0.1:8006/api2/json/cluster/resources", "type=vm",
 		func(_ *http.Request) (*http.Response, error) {
@@ -95,11 +122,31 @@ clusters:
 						"name":   "cluster-2-node-1",
 						"maxcpu": 1,
 						"maxmem": 2 * 1024 * 1024 * 1024,
+						"status": "stopped",
 					},
 				},
 			})
 		},
 	)
+
+	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-1/qemu/100/status/current`,
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(200, map[string]any{
+				"data": proxmox.VirtualMachine{Node: "pve-1", Name: "cluster-1-node-1", VMID: 100, CPUs: 4, MaxMem: 10 * 1024 * 1024 * 1024, Status: "running"},
+			})
+		})
+	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-2/qemu/101/status/current`,
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(200, map[string]any{
+				"data": proxmox.VirtualMachine{Node: "pve-2", Name: "cluster-1-node-2", VMID: 101, CPUs: 2, MaxMem: 5 * 1024 * 1024 * 1024, Status: "running"},
+			})
+		})
+	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-3/qemu/100/status/current`,
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(200, map[string]any{
+				"data": proxmox.VirtualMachine{Node: "pve-3", Name: "cluster-2-node-1", VMID: 100, CPUs: 1, MaxMem: 2 * 1024 * 1024 * 1024, Status: "stopped"},
+			})
+		})
 
 	httpmock.RegisterResponder("GET", "https://127.0.0.1:8006/api2/json/nodes/pve-1/qemu/100/config",
 		func(_ *http.Request) (*http.Response, error) {
@@ -149,27 +196,7 @@ clusters:
 		},
 	)
 
-	httpmock.RegisterResponder("GET", "https://127.0.0.1:8006/api2/json/nodes/pve-1/qemu/100/status/current",
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]interface{}{
-				"data": map[string]interface{}{
-					"status": "running",
-				},
-			})
-		},
-	)
-
-	httpmock.RegisterResponder("GET", "https://127.0.0.2:8006/api2/json/nodes/pve-3/qemu/100/status/current",
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]interface{}{
-				"data": map[string]interface{}{
-					"status": "stopped",
-				},
-			})
-		},
-	)
-
-	px, err := proxmoxpool.NewProxmoxPool(cfg.Clusters, &http.Client{})
+	px, err := proxmoxpool.NewProxmoxPool(ts.T().Context(), cfg.Clusters, proxmox.WithHTTPClient(&http.Client{}))
 	if err != nil {
 		ts.T().Fatalf("failed to create cluster client: %v", err)
 	}
@@ -374,7 +401,7 @@ func (ts *ccmTestSuite) TestInstanceShutdown() {
 				},
 			},
 			expected:      false,
-			expectedError: "vm '500' not found",
+			expectedError: goproxmox.ErrVirtualMachineNotFound.Error(),
 		},
 		{
 			msg: "NodeExists",
@@ -397,7 +424,7 @@ func (ts *ccmTestSuite) TestInstanceShutdown() {
 			msg: "NodeExistsStopped",
 			node: &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-3",
+					Name: "cluster-2-node-1",
 				},
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-2/100",
@@ -485,7 +512,7 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 		expected      *cloudprovider.InstanceMetadata
 	}{
 		{
-			msg: "NodeAnnotations",
+			msg: "NodeUndefined",
 			node: &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-node-1",
