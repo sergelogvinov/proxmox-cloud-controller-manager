@@ -179,7 +179,12 @@ clusters:
 		kclient: fake.NewSimpleClientset(),
 	}
 
-	ts.i = newInstances(client, providerconfig.ProviderDefault, providerconfig.NetworkOpts{})
+	features := providerconfig.ClustersFeatures{
+		Provider: providerconfig.ProviderDefault,
+		Network:  providerconfig.NetworkOpts{},
+	}
+
+	ts.i = newInstances(client, features)
 }
 
 func (ts *ccmTestSuite) TearDownTest() {

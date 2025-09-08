@@ -143,12 +143,7 @@ func (c *ProxmoxPool) GetProxmoxCluster(region string) (*proxmox.Client, error) 
 
 // GetNodeGroup returns a Proxmox node ha-group in a given region.
 func (c *ProxmoxPool) GetNodeGroup(ctx context.Context, region string, node string) (string, error) {
-	px, err := c.GetProxmoxCluster(region)
-	if err != nil {
-		return "", err
-	}
-
-	haGroups, err := px.GetHAGroupList(ctx)
+	haGroups, err := c.GetHAGroupList(ctx, region)
 	if err != nil {
 		return "", fmt.Errorf("error get ha-groups %v", err)
 	}
@@ -166,6 +161,44 @@ func (c *ProxmoxPool) GetNodeGroup(ctx context.Context, region string, node stri
 	}
 
 	return "", ErrHAGroupNotFound
+}
+
+// GetHAGroupList returns a list of Proxmox ha-groups in a given region.
+func (c *ProxmoxPool) GetHAGroupList(ctx context.Context, region string) (haGroups []proxmox.HAGroup, err error) {
+	px, err := c.GetProxmoxCluster(region)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := px.GetItemList(ctx, "/cluster/ha/groups")
+	if err != nil {
+		return nil, err
+	}
+
+	haGroups = []proxmox.HAGroup{}
+
+	items, ok := list["data"].([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("failed to cast response to list of HA groups in region %s, error: %v", region, err)
+	}
+
+	for _, item := range items {
+		itemMap := item.(map[string]interface{})
+
+		if itemMap["type"].(string) != "group" {
+			continue
+		}
+
+		haGroups = append(haGroups, proxmox.HAGroup{
+			Group:      itemMap["group"].(string),
+			Nodes:      strings.Split(itemMap["nodes"].(string), ","),
+			NoFailback: itemMap["nofailback"].(float64) == 1,
+			Restricted: itemMap["restricted"].(float64) == 1,
+			Type:       itemMap["type"].(string),
+		})
+	}
+
+	return haGroups, nil
 }
 
 // FindVMByNode find a VM by kubernetes node resource in all Proxmox clusters.

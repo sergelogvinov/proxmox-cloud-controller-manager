@@ -55,44 +55,42 @@ type instanceInfo struct {
 }
 
 type instances struct {
-	c           *client
-	provider    providerconfig.Provider
-	networkOpts instanceNetops
+	c             *client
+	zoneAsHAGroup bool
+	provider      providerconfig.Provider
+	networkOpts   instanceNetops
 }
 
 var instanceTypeNameRegexp = regexp.MustCompile(`(^[a-zA-Z0-9_.-]+)$`)
 
-func newInstances(
-	client *client,
-	provider providerconfig.Provider,
-	networkOpts providerconfig.NetworkOpts,
-) *instances {
-	externalIPCIDRs := ParseCIDRList(networkOpts.ExternalIPCIDRS)
-	if len(networkOpts.ExternalIPCIDRS) > 0 && len(externalIPCIDRs) == 0 {
-		klog.Warningf("Failed to parse external CIDRs: %v", networkOpts.ExternalIPCIDRS)
+func newInstances(client *client, features providerconfig.ClustersFeatures) *instances {
+	externalIPCIDRs := ParseCIDRList(features.Network.ExternalIPCIDRS)
+	if len(features.Network.ExternalIPCIDRS) > 0 && len(externalIPCIDRs) == 0 {
+		klog.Warningf("Failed to parse external CIDRs: %v", features.Network.ExternalIPCIDRS)
 	}
 
-	sortOrderCIDRs, ignoredCIDRs, err := ParseCIDRRuleset(networkOpts.IPSortOrder)
+	sortOrderCIDRs, ignoredCIDRs, err := ParseCIDRRuleset(features.Network.IPSortOrder)
 	if err != nil {
 		klog.Errorf("Failed to parse sort order CIDRs: %v", err)
 	}
 
-	if len(networkOpts.IPSortOrder) > 0 && (len(sortOrderCIDRs)+len(ignoredCIDRs)) == 0 {
-		klog.Warningf("Failed to parse sort order CIDRs: %v", networkOpts.IPSortOrder)
+	if len(features.Network.IPSortOrder) > 0 && (len(sortOrderCIDRs)+len(ignoredCIDRs)) == 0 {
+		klog.Warningf("Failed to parse sort order CIDRs: %v", features.Network.IPSortOrder)
 	}
 
 	netOps := instanceNetops{
 		ExternalCIDRs:       externalIPCIDRs,
 		SortOrder:           sortOrderCIDRs,
 		IgnoredCIDRs:        ignoredCIDRs,
-		Mode:                networkOpts.Mode,
-		IPv6SupportDisabled: networkOpts.IPv6SupportDisabled,
+		Mode:                features.Network.Mode,
+		IPv6SupportDisabled: features.Network.IPv6SupportDisabled,
 	}
 
 	return &instances{
-		c:           client,
-		provider:    provider,
-		networkOpts: netOps,
+		c:             client,
+		zoneAsHAGroup: features.HAGroup,
+		provider:      features.Provider,
+		networkOpts:   netOps,
 	}
 }
 
@@ -224,12 +222,6 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 		}
 	}
 
-	if len(additionalLabels) > 0 && !hasUninitializedTaint(node) {
-		if err := syncNodeLabels(i.c, node, additionalLabels); err != nil {
-			klog.ErrorS(err, "error updating labels for the node", "node", klog.KRef("", node.Name))
-		}
-	}
-
 	metadata := &cloudprovider.InstanceMetadata{
 		ProviderID:       providerID,
 		NodeAddresses:    i.addresses(ctx, node, info),
@@ -237,6 +229,24 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 		Zone:             info.Zone,
 		Region:           info.Region,
 		AdditionalLabels: additionalLabels,
+	}
+
+	if i.zoneAsHAGroup {
+		haGroup, err := i.c.pxpool.GetNodeGroup(ctx, info.Region, info.Node)
+		if err != nil {
+			klog.ErrorS(err, "instances.InstanceMetadata() failed to get HA group for the node", "node", klog.KRef("", node.Name), "region", info.Region)
+
+			return nil, err
+		}
+
+		metadata.Zone = haGroup
+		additionalLabels[LabelTopologyHAGroup] = haGroup
+	}
+
+	if len(additionalLabels) > 0 && !hasUninitializedTaint(node) {
+		if err := syncNodeLabels(i.c, node, additionalLabels); err != nil {
+			klog.ErrorS(err, "error updating labels for the node", "node", klog.KRef("", node.Name))
+		}
 	}
 
 	klog.V(5).InfoS("instances.InstanceMetadata()", "info", info, "metadata", metadata)
