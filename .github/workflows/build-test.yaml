@@ -24,14 +24,14 @@ jobs:
 
       - name: Set up go
         timeout-minutes: 5
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
 
       - name: Lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.4.0
+          version: v2.5.0
           args: --timeout=5m --config=.golangci.yml
       - name: Unit
         run: make unit
