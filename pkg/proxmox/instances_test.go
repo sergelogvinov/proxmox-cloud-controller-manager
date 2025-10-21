@@ -355,6 +355,112 @@ func (ts *ccmTestSuite) TestInstanceExists() {
 	}
 }
 
+func (ts *ccmTestSuite) TestInstanceExistsCAPMox() {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	// Set up a CAPMox provider instance for this test
+	cfg, err := providerconfig.ReadCloudConfig(strings.NewReader(`
+features:
+  provider: 'capmox'
+clusters:
+- url: https://127.0.0.1:8006/api2/json
+  insecure: false
+  token_id: "user!token-id"
+  token_secret: "secret"
+  region: cluster-1
+`))
+	if err != nil {
+		ts.T().Fatalf("failed to read config: %v", err)
+	}
+
+	px, err := proxmoxpool.NewProxmoxPool(ts.T().Context(), cfg.Clusters, proxmox.WithHTTPClient(&http.Client{}))
+	if err != nil {
+		ts.T().Fatalf("failed to create cluster client: %v", err)
+	}
+
+	client := &client{
+		pxpool:  px,
+		kclient: fake.NewSimpleClientset(),
+	}
+
+	capmoxInstance := newInstances(client, cfg.Features)
+
+	tests := []struct {
+		msg           string
+		node          *v1.Node
+		expectedError string
+		expected      bool
+	}{
+		{
+			msg: "NodeUUIDNotFoundCAPMox",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "talos-rqa-u7y",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "proxmox://d290d7f2-b179-404c-b627-6e4dccb59066",
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "d290d7f2-b179-404c-b627-6e4dccb59066",
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			msg: "NodeUUIDNotFoundCAPMoxDifferentFormat",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "talos-missing-node",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "proxmox://00000000-0000-0000-0000-000000000000",
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "00000000-0000-0000-0000-000000000000",
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			msg: "NodeUUIDFoundCAPMox",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-1-node-1",
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "proxmox://8af7110d-bfad-407a-a663-9527d10a6583",
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
+					},
+				},
+			},
+			expected: true,
+		},
+	}
+
+	for _, testCase := range tests {
+		ts.Run(fmt.Sprint(testCase.msg), func() {
+			exists, err := capmoxInstance.InstanceExists(ts.T().Context(), testCase.node)
+
+			if testCase.expectedError != "" {
+				ts.Require().Error(err)
+				ts.Require().False(exists)
+				ts.Require().Contains(err.Error(), testCase.expectedError)
+			} else {
+				ts.Require().NoError(err)
+				ts.Require().Equal(testCase.expected, exists)
+			}
+		})
+	}
+}
+
 // nolint:dupl
 func (ts *ccmTestSuite) TestInstanceShutdown() {
 	httpmock.Activate()

@@ -18,6 +18,7 @@ package proxmox
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"regexp"
@@ -190,6 +191,8 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 
 	info, err = i.getInstanceInfo(ctx, node)
 	if mc.ObserveRequest(err) != nil {
+		klog.ErrorS(err, "instances.InstanceMetadata() failed to get instance info", "node", klog.KObj(node))
+
 		if err == proxmoxpool.ErrInstanceNotFound {
 			klog.V(4).InfoS("instances.InstanceMetadata() instance not found", "node", klog.KObj(node), "providerID", providerID)
 
@@ -311,6 +314,10 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 
 			vmID, region, err = i.c.pxpool.FindVMByUUID(ctx, node.Status.NodeInfo.SystemUUID)
 			if err != nil {
+				if errors.Is(err, proxmoxpool.ErrInstanceNotFound) {
+					return nil, cloudprovider.InstanceNotFound
+				}
+
 				return nil, fmt.Errorf("instances.getInstanceInfo() error: %v", err)
 			}
 		}
