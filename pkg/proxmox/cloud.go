@@ -71,7 +71,7 @@ func init() {
 func newCloud(config *ccmConfig.ClustersConfig) (cloudprovider.Interface, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	px, err := pxpool.NewProxmoxPool(ctx, config.Clusters)
+	px, err := pxpool.NewProxmoxPool(config.Clusters)
 	if err != nil {
 		cancel()
 

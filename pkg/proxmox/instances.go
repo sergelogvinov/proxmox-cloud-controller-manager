@@ -309,7 +309,7 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 		vmID, region, err = provider.ParseProviderID(providerID)
 		if err != nil {
 			if i.provider == providerconfig.ProviderDefault {
-				return nil, fmt.Errorf("instances.getInstanceInfo() error: %v", err)
+				klog.V(4).InfoS("instances.getInstanceInfo() failed to parse providerID, trying find by name", "node", klog.KObj(node), "providerID", providerID)
 			}
 
 			vmID, region, err = i.c.pxpool.FindVMByUUID(ctx, node.Status.NodeInfo.SystemUUID)

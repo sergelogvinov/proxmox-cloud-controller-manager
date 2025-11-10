@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net"
 	"strings"
 	"unicode"
@@ -59,12 +60,7 @@ func ParseCIDRRuleset(cidrList string) (allowList, ignoreList []*net.IPNet, err 
 	}
 
 	for _, item := range cidrlist {
-		isIgnore := false
-
-		if strings.HasPrefix(item, "!") {
-			item = strings.TrimPrefix(item, "!")
-			isIgnore = true
-		}
+		item, isIgnore := strings.CutPrefix(item, "!")
 
 		_, cidr, err := net.ParseCIDR(item)
 		if err != nil {
@@ -148,9 +144,7 @@ func syncNodeAnnotations(ctx context.Context, kclient clientkubernetes.Interface
 			newNode.Annotations = make(map[string]string)
 		}
 
-		for k, v := range annotationsToUpdate {
-			newNode.Annotations[k] = v
-		}
+		maps.Copy(newNode.Annotations, annotationsToUpdate)
 
 		newData, err := json.Marshal(newNode)
 		if err != nil {

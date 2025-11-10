@@ -64,11 +64,11 @@ func TestNewClient(t *testing.T) {
 	cfg := newClusterEnv()
 	assert.NotNil(t, cfg)
 
-	pxClient, err := pxpool.NewProxmoxPool(t.Context(), []*pxpool.ProxmoxCluster{})
+	pxClient, err := pxpool.NewProxmoxPool([]*pxpool.ProxmoxCluster{})
 	assert.NotNil(t, err)
 	assert.Nil(t, pxClient)
 
-	pxClient, err = pxpool.NewProxmoxPool(t.Context(), cfg)
+	pxClient, err = pxpool.NewProxmoxPool(cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, pxClient)
 }
@@ -89,7 +89,7 @@ func TestNewClientWithCredentialsFromFile(t *testing.T) {
 
 	cfg := newClusterEnvWithFiles(tokenIDFile.Name(), tokenSecretFile.Name())
 
-	pxClient, err := pxpool.NewProxmoxPool(t.Context(), cfg)
+	pxClient, err := pxpool.NewProxmoxPool(cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, pxClient)
 	assert.Equal(t, "user!token-id", cfg[0].TokenID)
@@ -100,7 +100,7 @@ func TestCheckClusters(t *testing.T) {
 	cfg := newClusterEnv()
 	assert.NotNil(t, cfg)
 
-	pxClient, err := pxpool.NewProxmoxPool(t.Context(), cfg)
+	pxClient, err := pxpool.NewProxmoxPool(cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, pxClient)
 
