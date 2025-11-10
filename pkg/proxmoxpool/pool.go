@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -53,20 +54,24 @@ type ProxmoxPool struct {
 }
 
 // NewProxmoxPool creates a new Proxmox cluster client.
-func NewProxmoxPool(ctx context.Context, config []*ProxmoxCluster, options ...proxmox.Option) (*ProxmoxPool, error) {
+func NewProxmoxPool(config []*ProxmoxCluster, options ...proxmox.Option) (*ProxmoxPool, error) {
 	clusters := len(config)
 	if clusters > 0 {
 		clients := make(map[string]*goproxmox.APIClient, clusters)
 
 		for _, cfg := range config {
-			options = append(options, proxmox.WithUserAgent("ProxmoxCCM v1.0"))
+			opts := []proxmox.Option{proxmox.WithUserAgent("ProxmoxCCM/1.0")}
+			opts = append(opts, options...)
 
 			if cfg.Insecure {
 				httpTr := &http.Transport{
-					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+						MinVersion:         tls.VersionTLS12,
+					},
 				}
 
-				options = append(options, proxmox.WithHTTPClient(&http.Client{Transport: httpTr}))
+				opts = append(opts, proxmox.WithHTTPClient(&http.Client{Transport: httpTr}))
 			}
 
 			if cfg.TokenID == "" && cfg.TokenIDFile != "" {
@@ -88,15 +93,15 @@ func NewProxmoxPool(ctx context.Context, config []*ProxmoxCluster, options ...pr
 			}
 
 			if cfg.Username != "" && cfg.Password != "" {
-				options = append(options, proxmox.WithCredentials(&proxmox.Credentials{
+				opts = append(opts, proxmox.WithCredentials(&proxmox.Credentials{
 					Username: cfg.Username,
 					Password: cfg.Password,
 				}))
 			} else if cfg.TokenID != "" && cfg.TokenSecret != "" {
-				options = append(options, proxmox.WithAPIToken(cfg.TokenID, cfg.TokenSecret))
+				opts = append(opts, proxmox.WithAPIToken(cfg.TokenID, cfg.TokenSecret))
 			}
 
-			pxClient, err := goproxmox.NewAPIClient(ctx, cfg.URL, options...)
+			pxClient, err := goproxmox.NewAPIClient(cfg.URL, opts...)
 			if err != nil {
 				return nil, err
 			}
@@ -126,7 +131,8 @@ func (c *ProxmoxPool) GetRegions() []string {
 // CheckClusters checks if the Proxmox connection is working.
 func (c *ProxmoxPool) CheckClusters(ctx context.Context) error {
 	for region, pxClient := range c.clients {
-		if _, err := pxClient.Version(ctx); err != nil {
+		info, err := pxClient.Version(ctx)
+		if err != nil {
 			return fmt.Errorf("failed to initialized proxmox client in region %s, error: %v", region, err)
 		}
 
@@ -142,7 +148,7 @@ func (c *ProxmoxPool) CheckClusters(ctx context.Context) error {
 		}
 
 		if len(vms) > 0 {
-			klog.V(4).InfoS("Proxmox cluster has VMs", "region", region, "count", len(vms))
+			klog.V(4).InfoS("Proxmox cluster information", "region", region, "version", info.Version, "vms", len(vms))
 		} else {
 			klog.InfoS("Proxmox cluster has no VMs, or check the account permission", "region", region)
 		}
@@ -202,7 +208,7 @@ func (c *ProxmoxPool) GetNodeGroup(ctx context.Context, region string, node stri
 			continue
 		}
 
-		for _, n := range strings.Split(g.Nodes, ",") {
+		for n := range strings.SplitSeq(g.Nodes, ",") {
 			if node == strings.Split(n, ":")[0] {
 				return g.Group, nil
 			}
@@ -286,7 +292,11 @@ func (c *ProxmoxPool) FindVMByUUID(ctx context.Context, uuid string) (vmID int, 
 			return false, nil
 		})
 		if err != nil {
-			return 0, "", ErrInstanceNotFound
+			if errors.Is(err, goproxmox.ErrVirtualMachineNotFound) {
+				continue
+			}
+
+			return 0, "", err
 		}
 
 		return vmid, region, nil

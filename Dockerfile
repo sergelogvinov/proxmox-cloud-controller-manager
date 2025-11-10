@@ -1,12 +1,12 @@
 # syntax = docker/dockerfile:1.18
 ########################################
 
-FROM --platform=${BUILDPLATFORM} golang:1.25.1-alpine AS builder
+FROM --platform=${BUILDPLATFORM} golang:1.25.3-alpine AS builder
 RUN apk update && apk add --no-cache make
 ENV GO111MODULE=on
 WORKDIR /src
 
-COPY go.mod go.sum /src
+COPY ["go.mod", "go.sum", "/src/"]
 RUN go mod download && go mod verify
 
 COPY . .
@@ -22,7 +22,7 @@ LABEL org.opencontainers.image.source="https://github.com/sergelogvinov/proxmox-
       org.opencontainers.image.licenses="Apache-2.0" \
       org.opencontainers.image.description="Proxmox VE CCM for Kubernetes"
 
-COPY --from=gcr.io/distroless/static-debian12:nonroot . .
+COPY --from=gcr.io/distroless/static-debian13:nonroot . .
 ARG TARGETARCH
 COPY --from=builder /src/bin/proxmox-cloud-controller-manager-${TARGETARCH} /bin/proxmox-cloud-controller-manager
 

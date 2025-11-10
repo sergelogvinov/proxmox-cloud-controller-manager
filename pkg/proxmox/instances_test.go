@@ -18,17 +18,16 @@ package proxmox
 
 import (
 	"fmt"
-	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
-	proxmox "github.com/luthermonson/go-proxmox"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/suite"
 
 	goproxmox "github.com/sergelogvinov/go-proxmox"
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
+	testcluster "github.com/sergelogvinov/proxmox-cloud-controller-manager/test/cluster"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,160 +42,40 @@ type ccmTestSuite struct {
 	i *instances
 }
 
-func (ts *ccmTestSuite) SetupTest() {
-	cfg, err := providerconfig.ReadCloudConfig(strings.NewReader(`
-clusters:
-- url: https://127.0.0.1:8006/api2/json
-  insecure: false
-  token_id: "user!token-id"
-  token_secret: "secret"
-  region: cluster-1
-- url: https://127.0.0.2:8006/api2/json
-  insecure: false
-  token_id: "user!token-id"
-  token_secret: "secret"
-  region: cluster-2
-`))
+type configTestCase struct {
+	name   string
+	config string
+}
+
+func getTestConfigs() []configTestCase {
+	return []configTestCase{
+		{
+			name:   "DefaultProvider",
+			config: "../../test/config/cluster-config-1.yaml",
+		},
+		{
+			name:   "CapMoxProvider",
+			config: "../../test/config/cluster-config-2.yaml",
+		},
+	}
+}
+
+// configuredTestSuite wraps the base suite with a specific configuration
+type configuredTestSuite struct {
+	*ccmTestSuite
+
+	configCase configTestCase
+}
+
+func (ts *configuredTestSuite) SetupTest() {
+	testcluster.SetupMockResponders()
+
+	cfg, err := providerconfig.ReadCloudConfigFromFile(ts.configCase.config)
 	if err != nil {
 		ts.T().Fatalf("failed to read config: %v", err)
 	}
 
-	httpmock.RegisterResponder(http.MethodGet, `=~/cluster/status`,
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]any{
-				"data": proxmox.NodeStatuses{{Name: "pve-1"}, {Name: "pve-2"}, {Name: "pve-3"}},
-			})
-		})
-	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-1/status`,
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]any{
-				"data": proxmox.Node{},
-			})
-		})
-	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-2/status`,
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]any{
-				"data": proxmox.Node{},
-			})
-		})
-	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-3/status`,
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]any{
-				"data": proxmox.Node{},
-			})
-		})
-
-	httpmock.RegisterResponderWithQuery("GET", "https://127.0.0.1:8006/api2/json/cluster/resources", "type=vm",
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]interface{}{
-				"data": []interface{}{
-					map[string]interface{}{
-						"node":   "pve-1",
-						"type":   "qemu",
-						"vmid":   100,
-						"name":   "cluster-1-node-1",
-						"maxcpu": 4,
-						"maxmem": 10 * 1024 * 1024 * 1024,
-					},
-					map[string]interface{}{
-						"node":   "pve-2",
-						"type":   "qemu",
-						"vmid":   101,
-						"name":   "cluster-1-node-2",
-						"maxcpu": 2,
-						"maxmem": 5 * 1024 * 1024 * 1024,
-					},
-				},
-			})
-		},
-	)
-
-	httpmock.RegisterResponderWithQuery("GET", "https://127.0.0.2:8006/api2/json/cluster/resources", "type=vm",
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]interface{}{
-				"data": []interface{}{
-					map[string]interface{}{
-						"node":   "pve-3",
-						"type":   "qemu",
-						"vmid":   100,
-						"name":   "cluster-2-node-1",
-						"maxcpu": 1,
-						"maxmem": 2 * 1024 * 1024 * 1024,
-						"status": "stopped",
-					},
-				},
-			})
-		},
-	)
-
-	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-1/qemu/100/status/current`,
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]any{
-				"data": proxmox.VirtualMachine{Node: "pve-1", Name: "cluster-1-node-1", VMID: 100, CPUs: 4, MaxMem: 10 * 1024 * 1024 * 1024, Status: "running"},
-			})
-		})
-	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-2/qemu/101/status/current`,
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]any{
-				"data": proxmox.VirtualMachine{Node: "pve-2", Name: "cluster-1-node-2", VMID: 101, CPUs: 2, MaxMem: 5 * 1024 * 1024 * 1024, Status: "running"},
-			})
-		})
-	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-3/qemu/100/status/current`,
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]any{
-				"data": proxmox.VirtualMachine{Node: "pve-3", Name: "cluster-2-node-1", VMID: 100, CPUs: 1, MaxMem: 2 * 1024 * 1024 * 1024, Status: "stopped"},
-			})
-		})
-
-	httpmock.RegisterResponder("GET", "https://127.0.0.1:8006/api2/json/nodes/pve-1/qemu/100/config",
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]interface{}{
-				"data": map[string]interface{}{
-					"name":    "cluster-1-node-1",
-					"node":    "pve-1",
-					"type":    "qemu",
-					"vmid":    100,
-					"cores":   4,
-					"memory":  "10240",
-					"smbios1": "uuid=8af7110d-bfad-407a-a663-9527d10a6583",
-				},
-			})
-		},
-	)
-
-	httpmock.RegisterResponder("GET", "https://127.0.0.1:8006/api2/json/nodes/pve-2/qemu/101/config",
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]interface{}{
-				"data": map[string]interface{}{
-					"name":    "cluster-1-node-2",
-					"node":    "pve-2",
-					"type":    "qemu",
-					"vmid":    101,
-					"cores":   2,
-					"memory":  "5120",
-					"smbios1": "uuid=5d04cb23-ea78-40a3-af2e-dd54798dc887",
-				},
-			})
-		},
-	)
-
-	httpmock.RegisterResponder("GET", "https://127.0.0.2:8006/api2/json/nodes/pve-3/qemu/100/config",
-		func(_ *http.Request) (*http.Response, error) {
-			return httpmock.NewJsonResponse(200, map[string]interface{}{
-				"data": map[string]interface{}{
-					"name":    "cluster-2-node-1",
-					"node":    "pve-3",
-					"type":    "qemu",
-					"vmid":    100,
-					"cores":   1,
-					"memory":  "2048",
-					"smbios1": "uuid=3d3db687-89dd-473e-8463-6599f25b36a8,sku=YzEubWVkaXVt",
-				},
-			})
-		},
-	)
-
-	px, err := proxmoxpool.NewProxmoxPool(ts.T().Context(), cfg.Clusters, proxmox.WithHTTPClient(&http.Client{}))
+	px, err := proxmoxpool.NewProxmoxPool(cfg.Clusters)
 	if err != nil {
 		ts.T().Fatalf("failed to create cluster client: %v", err)
 	}
@@ -207,24 +86,31 @@ clusters:
 	}
 
 	features := providerconfig.ClustersFeatures{
-		Provider: providerconfig.ProviderDefault,
+		Provider: cfg.Features.Provider,
 		Network:  providerconfig.NetworkOpts{},
 	}
 
 	ts.i = newInstances(client, features)
 }
 
-func (ts *ccmTestSuite) TearDownTest() {
-}
-
 func TestSuiteCCM(t *testing.T) {
-	suite.Run(t, new(ccmTestSuite))
+	configs := getTestConfigs()
+	for _, cfg := range configs {
+		// Create a new test suite for each configuration
+		ts := &ccmTestSuite{}
+
+		// Run the suite with the current configuration
+		suite.Run(t, &configuredTestSuite{
+			ccmTestSuite: ts,
+			configCase:   cfg,
+		})
+	}
 }
 
 // nolint:dupl
-func (ts *ccmTestSuite) TestInstanceExists() {
+func (ts *configuredTestSuite) TestInstanceExists() {
 	httpmock.Activate()
-	defer httpmock.DeactivateAndReset()
+	defer httpmock.DeactivateAndReset() //nolint: wsl_v5
 
 	tests := []struct {
 		msg           string
@@ -276,11 +162,11 @@ func (ts *ccmTestSuite) TestInstanceExists() {
 					Name: "cluster-1-node-1",
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: "proxmox://cluster-1/100",
+					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, "proxmox://11833f4c-341f-4bd3-aad7-f7abed000000", "proxmox://cluster-1/100"),
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
-						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abed000000",
 					},
 				},
 			},
@@ -293,11 +179,11 @@ func (ts *ccmTestSuite) TestInstanceExists() {
 					Name: "cluster-1-node-3",
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: "proxmox://cluster-1/100",
+					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, "proxmox://11833f4c-341f-4bd3-aad7-f7abed000000", "proxmox://cluster-1/100"),
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
-						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abed000000",
 					},
 				},
 			},
@@ -310,7 +196,7 @@ func (ts *ccmTestSuite) TestInstanceExists() {
 					Name: "cluster-1-node-1",
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: "proxmox://cluster-1/100",
+					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, "proxmox://8af7110d-0000-0000-0000-9527d10a6583", "proxmox://cluster-1/100"),
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -337,61 +223,6 @@ func (ts *ccmTestSuite) TestInstanceExists() {
 			},
 			expected: false,
 		},
-	}
-
-	for _, testCase := range tests {
-		ts.Run(fmt.Sprint(testCase.msg), func() {
-			exists, err := ts.i.InstanceExists(ts.T().Context(), testCase.node)
-
-			if testCase.expectedError != "" {
-				ts.Require().Error(err)
-				ts.Require().False(exists)
-				ts.Require().Contains(err.Error(), testCase.expectedError)
-			} else {
-				ts.Require().NoError(err)
-				ts.Require().Equal(testCase.expected, exists)
-			}
-		})
-	}
-}
-
-func (ts *ccmTestSuite) TestInstanceExistsCAPMox() {
-	httpmock.Activate()
-	defer httpmock.DeactivateAndReset()
-
-	// Set up a CAPMox provider instance for this test
-	cfg, err := providerconfig.ReadCloudConfig(strings.NewReader(`
-features:
-  provider: 'capmox'
-clusters:
-- url: https://127.0.0.1:8006/api2/json
-  insecure: false
-  token_id: "user!token-id"
-  token_secret: "secret"
-  region: cluster-1
-`))
-	if err != nil {
-		ts.T().Fatalf("failed to read config: %v", err)
-	}
-
-	px, err := proxmoxpool.NewProxmoxPool(ts.T().Context(), cfg.Clusters, proxmox.WithHTTPClient(&http.Client{}))
-	if err != nil {
-		ts.T().Fatalf("failed to create cluster client: %v", err)
-	}
-
-	client := &client{
-		pxpool:  px,
-		kclient: fake.NewSimpleClientset(),
-	}
-
-	capmoxInstance := newInstances(client, cfg.Features)
-
-	tests := []struct {
-		msg           string
-		node          *v1.Node
-		expectedError string
-		expected      bool
-	}{
 		{
 			msg: "NodeUUIDNotFoundCAPMox",
 			node: &v1.Node{
@@ -433,11 +264,11 @@ clusters:
 					Name: "cluster-1-node-1",
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: "proxmox://8af7110d-bfad-407a-a663-9527d10a6583",
+					ProviderID: "proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
-						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abed000000",
 					},
 				},
 			},
@@ -447,7 +278,7 @@ clusters:
 
 	for _, testCase := range tests {
 		ts.Run(fmt.Sprint(testCase.msg), func() {
-			exists, err := capmoxInstance.InstanceExists(ts.T().Context(), testCase.node)
+			exists, err := ts.i.InstanceExists(ts.T().Context(), testCase.node)
 
 			if testCase.expectedError != "" {
 				ts.Require().Error(err)
@@ -462,9 +293,9 @@ clusters:
 }
 
 // nolint:dupl
-func (ts *ccmTestSuite) TestInstanceShutdown() {
+func (ts *configuredTestSuite) TestInstanceShutdown() {
 	httpmock.Activate()
-	defer httpmock.DeactivateAndReset()
+	defer httpmock.DeactivateAndReset() //nolint: wsl_v5
 
 	tests := []struct {
 		msg           string
@@ -533,7 +364,7 @@ func (ts *ccmTestSuite) TestInstanceShutdown() {
 					Name: "cluster-2-node-1",
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: "proxmox://cluster-2/100",
+					ProviderID: "proxmox://cluster-2/103",
 				},
 			},
 			expected: true,
@@ -607,9 +438,9 @@ func (ts *ccmTestSuite) TestInstanceShutdown() {
 	}
 }
 
-func (ts *ccmTestSuite) TestInstanceMetadata() {
+func (ts *configuredTestSuite) TestInstanceMetadata() {
 	httpmock.Activate()
-	defer httpmock.DeactivateAndReset()
+	defer httpmock.DeactivateAndReset() //nolint: wsl_v5
 
 	tests := []struct {
 		msg           string
@@ -684,7 +515,7 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
-						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abed000000",
 					},
 				},
 				Spec: v1.NodeSpec{
@@ -698,7 +529,7 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: "proxmox://cluster-1/100",
+				ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, "proxmox://11833f4c-341f-4bd3-aad7-f7abed000000", "proxmox://cluster-1/100"),
 				NodeAddresses: []v1.NodeAddress{
 					{
 						Type:    v1.NodeHostName,
@@ -729,7 +560,7 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
-						SystemUUID: "8af7110d-bfad-407a-a663-9527d10a6583",
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abed000000",
 					},
 				},
 				Spec: v1.NodeSpec{
@@ -743,7 +574,7 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: "proxmox://cluster-1/100",
+				ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, "proxmox://11833f4c-341f-4bd3-aad7-f7abed000000", "proxmox://cluster-1/100"),
 				NodeAddresses: []v1.NodeAddress{
 					{
 						Type:    v1.NodeHostName,
@@ -778,7 +609,7 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
-						SystemUUID: "3d3db687-89dd-473e-8463-6599f25b36a8",
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abea000000",
 					},
 				},
 				Spec: v1.NodeSpec{
@@ -792,7 +623,7 @@ func (ts *ccmTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: "proxmox://cluster-2/100",
+				ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, "proxmox://11833f4c-341f-4bd3-aad7-f7abea000000", "proxmox://cluster-2/103"),
 				NodeAddresses: []v1.NodeAddress{
 					{
 						Type:    v1.NodeHostName,

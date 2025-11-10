@@ -1,6 +1,6 @@
 module github.com/sergelogvinov/proxmox-cloud-controller-manager
 
-go 1.25.1
+go 1.25.3
 
 // replace github.com/sergelogvinov/go-proxmox => ../proxmox/go-proxmox
 
@@ -8,7 +8,8 @@ require (
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/luthermonson/go-proxmox v0.2.4-0.20250923162601-ef332f9e265b
 	github.com/pkg/errors v0.9.1
-	github.com/sergelogvinov/go-proxmox v0.0.0-20250920041813-b003ecb58e03
+	github.com/samber/lo v1.52.0
+	github.com/sergelogvinov/go-proxmox v0.0.0-20251110010552-654365b267da
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1

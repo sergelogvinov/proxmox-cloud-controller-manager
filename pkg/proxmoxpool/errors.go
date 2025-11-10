@@ -25,6 +25,8 @@ var (
 	ErrHAGroupNotFound = errors.New("ha-group not found")
 	// ErrRegionNotFound is returned when a region is not found in the Proxmox
 	ErrRegionNotFound = errors.New("region not found")
+	// ErrZoneNotFound is returned when a zone is not found in the Proxmox
+	ErrZoneNotFound = errors.New("zone not found")
 	// ErrInstanceNotFound is returned when an instance is not found in the Proxmox
 	ErrInstanceNotFound = errors.New("instance not found")
 )

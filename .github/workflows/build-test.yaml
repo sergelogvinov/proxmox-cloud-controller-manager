@@ -31,7 +31,7 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.5.0
+          version: v2.6.0
           args: --timeout=5m --config=.golangci.yml
       - name: Unit
         run: make unit

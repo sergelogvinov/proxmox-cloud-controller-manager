@@ -34,35 +34,35 @@ func TestParseCIDRRuleset(t *testing.T) {
 		cidrs              string
 		expectedAllowList  []*net.IPNet
 		expectedIgnoreList []*net.IPNet
-		expectedError      []interface{}
+		expectedError      []any
 	}{
 		{
 			msg:                "Empty CIDR ruleset",
 			cidrs:              "",
 			expectedAllowList:  []*net.IPNet{},
 			expectedIgnoreList: []*net.IPNet{},
-			expectedError:      []interface{}{},
+			expectedError:      []any{},
 		},
 		{
 			msg:                "Conflicting CIDRs",
 			cidrs:              "192.168.0.1/16,!192.168.0.1/24",
 			expectedAllowList:  []*net.IPNet{},
 			expectedIgnoreList: []*net.IPNet{},
-			expectedError:      []interface{}{"192.168.0.0/16", "192.168.0.0/24"},
+			expectedError:      []any{"192.168.0.0/16", "192.168.0.0/24"},
 		},
 		{
 			msg:                "Ignores invalid CIDRs",
 			cidrs:              "722.887.0.1/16,!588.0.1/24",
 			expectedAllowList:  []*net.IPNet{},
 			expectedIgnoreList: []*net.IPNet{},
-			expectedError:      []interface{}{},
+			expectedError:      []any{},
 		},
 		{
 			msg:                "Valid CIDRs with ignore",
 			cidrs:              "192.168.0.1/16,!10.0.0.5/8,144.0.0.7/16,!13.0.0.9/8",
 			expectedAllowList:  []*net.IPNet{mustParseCIDR("192.168.0.0/16"), mustParseCIDR("144.0.0.0/16")},
 			expectedIgnoreList: []*net.IPNet{mustParseCIDR("10.0.0.0/8"), mustParseCIDR("13.0.0.0/8")},
-			expectedError:      []interface{}{},
+			expectedError:      []any{},
 		},
 	}
 
