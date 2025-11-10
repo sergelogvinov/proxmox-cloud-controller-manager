@@ -46,9 +46,10 @@ existingConfigSecret: ~
 existingConfigSecretKey: config.yaml
 
 # -- Proxmox cluster config.
+# refs: https://github.com/sergelogvinov/proxmox-cloud-controller-manager/blob/main/docs/config.md
 config:
   features:
-    # specify provider: proxmox if you are using capmox (cluster api provider for proxmox)
+    # Provider value can be "default" or "capmox"
     provider: "default"
   clusters: []
   #   - url: https://cluster-api-1.exmple.com:8006/api2/json

@@ -1,6 +1,6 @@
 # proxmox-cloud-controller-manager
 
-![Version: 0.2.17](https://img.shields.io/badge/Version-0.2.17-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.11.0](https://img.shields.io/badge/AppVersion-v0.11.0-informational?style=flat-square)
+![Version: 0.2.18](https://img.shields.io/badge/Version-0.2.18-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.11.0](https://img.shields.io/badge/AppVersion-v0.11.0-informational?style=flat-square)
 
 Cloud Controller Manager plugin for Proxmox
 
@@ -142,7 +142,7 @@ helm upgrade -i --namespace=kube-system -f proxmox-ccm.yaml \
 | logVerbosityLevel | int | `2` | Log verbosity level. See https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md for description of individual verbosity levels. |
 | existingConfigSecret | string | `nil` | Proxmox cluster config stored in secrets. |
 | existingConfigSecretKey | string | `"config.yaml"` | Proxmox cluster config stored in secrets key. |
-| config | object | `{"clusters":[],"features":{"provider":"default"}}` | Proxmox cluster config. |
+| config | object | `{"clusters":[],"features":{"provider":"default"}}` | Proxmox cluster config. refs: https://github.com/sergelogvinov/proxmox-cloud-controller-manager/blob/main/docs/config.md |
 | serviceAccount | object | `{"annotations":{},"create":true,"name":""}` | Pods Service Account. ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/ |
 | priorityClassName | string | `"system-cluster-critical"` | CCM pods' priorityClassName. |
 | initContainers | list | `[]` | Add additional init containers to the CCM pods. ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ |
