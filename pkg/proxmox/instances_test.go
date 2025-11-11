@@ -665,8 +665,9 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				Region:       "cluster-1",
 				Zone:         "pve-1",
 				AdditionalLabels: map[string]string{
-					"topology.proxmox.sinextra.dev/region": "cluster-1",
-					"topology.proxmox.sinextra.dev/zone":   "pve-1",
+					"group.topology.proxmox.sinextra.dev/rnd": "",
+					"topology.proxmox.sinextra.dev/region":    "cluster-1",
+					"topology.proxmox.sinextra.dev/zone":      "pve-1",
 				},
 			},
 		},
@@ -717,8 +718,9 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				Region:       "cluster-1",
 				Zone:         "pve-1",
 				AdditionalLabels: map[string]string{
-					"topology.proxmox.sinextra.dev/region": "cluster-1",
-					"topology.proxmox.sinextra.dev/zone":   "pve-1",
+					"group.topology.proxmox.sinextra.dev/rnd": "",
+					"topology.proxmox.sinextra.dev/region":    "cluster-1",
+					"topology.proxmox.sinextra.dev/zone":      "pve-1",
 				},
 			},
 		},

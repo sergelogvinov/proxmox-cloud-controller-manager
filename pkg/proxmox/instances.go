@@ -150,9 +150,16 @@ func (i *instances) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, 
 
 	vmID, region, err := provider.ParseProviderID(node.Spec.ProviderID)
 	if err != nil {
-		klog.ErrorS(err, "instances.InstanceShutdown() failed to parse providerID", "providerID", node.Spec.ProviderID)
+		if i.provider == providerconfig.ProviderDefault {
+			klog.ErrorS(err, "instances.InstanceShutdown() failed to parse providerID", "providerID", node.Spec.ProviderID)
+		}
 
-		return false, nil
+		vmID, region, err = i.parseProviderIDFromNode(node)
+		if err != nil {
+			klog.ErrorS(err, "instances.InstanceShutdown() failed to parse providerID from node", "node", klog.KObj(node))
+
+			return false, nil
+		}
 	}
 
 	px, err := i.c.pxpool.GetProxmoxCluster(region)
@@ -239,16 +246,29 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 		AdditionalLabels: labels,
 	}
 
-	if i.zoneAsHAGroup {
-		haGroup, err := i.c.pxpool.GetNodeGroup(ctx, info.Region, info.Node)
-		if err != nil {
+	haGroups, err := i.c.pxpool.GetNodeHAGroups(ctx, info.Region, info.Node)
+	if err != nil {
+		if !errors.Is(err, proxmoxpool.ErrHAGroupNotFound) {
 			klog.ErrorS(err, "instances.InstanceMetadata() failed to get HA group for the node", "node", klog.KRef("", node.Name), "region", info.Region)
 
 			return nil, err
 		}
+	}
 
-		metadata.Zone = haGroup
-		labels[LabelTopologyHAGroup] = haGroup
+	for _, g := range haGroups {
+		labels[LabelTopologyHAGroupPrefix+g] = ""
+	}
+
+	if i.zoneAsHAGroup {
+		if len(haGroups) == 0 {
+			err := fmt.Errorf("cannot set zone as HA-Group")
+			klog.ErrorS(err, "instances.InstanceMetadata() no HA groups found for the node", "node", klog.KRef("", node.Name))
+
+			return nil, err
+		}
+
+		metadata.Zone = haGroups[0]
+		labels[LabelTopologyZone] = haGroups[0]
 	}
 
 	if !hasUninitializedTaint(node) {
@@ -284,31 +304,17 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 	vmID, region, err = provider.ParseProviderID(providerID)
 	if err != nil {
 		if i.provider == providerconfig.ProviderDefault {
-			klog.V(4).InfoS("instances.getInstanceInfo() failed to parse providerID", "node", klog.KObj(node), "providerID", providerID)
+			klog.ErrorS(err, "instances.getInstanceInfo() failed to parse providerID", "node", klog.KObj(node), "providerID", providerID)
 		}
 
-		// ProviderID parsing failed, probably cluster is running with kubernetes distribution
-		if node.Annotations[AnnotationProxmoxInstanceID] != "" {
-			region = node.Labels[LabelTopologyRegion]
-			if region == "" {
-				region = node.Labels[v1.LabelTopologyRegion]
-			}
-
-			vmID, err = strconv.Atoi(node.Annotations[AnnotationProxmoxInstanceID])
-			if err != nil {
-				return nil, fmt.Errorf("instances.getInstanceInfo() parse annotation error: %v", err)
-			}
-
-			if _, err := i.c.pxpool.GetProxmoxCluster(region); err == nil {
-				providerID = provider.GetProviderIDFromID(region, vmID)
-
-				klog.V(4).InfoS("instances.getInstanceInfo() set providerID", "node", klog.KObj(node), "providerID", providerID)
-			}
+		vmID, region, err = i.parseProviderIDFromNode(node)
+		if err != nil {
+			klog.ErrorS(err, "instances.getInstanceInfo() failed to parse providerID from node", "node", klog.KObj(node))
 		}
 	}
 
 	if vmID == 0 || region == "" {
-		klog.V(4).InfoS("instances.getInstanceInfo() trying find node", "node", klog.KObj(node), "providerID", providerID)
+		klog.V(4).InfoS("instances.getInstanceInfo() trying to find node in cluster", "node", klog.KObj(node), "providerID", providerID)
 
 		mc := metrics.NewMetricContext("findVmByNode")
 
@@ -325,10 +331,6 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 				return nil, err
 			}
 		}
-
-		providerID = provider.GetProviderIDFromID(region, vmID)
-
-		klog.V(4).InfoS("instances.getInstanceInfo() set providerID", "node", klog.KObj(node), "providerID", providerID)
 	}
 
 	px, err := i.c.pxpool.GetProxmoxCluster(region)
@@ -378,4 +380,26 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 	}
 
 	return info, nil
+}
+
+func (i *instances) parseProviderIDFromNode(node *v1.Node) (vmID int, region string, err error) {
+	if node.Annotations[AnnotationProxmoxInstanceID] != "" {
+		region = node.Labels[LabelTopologyRegion]
+		if region == "" {
+			region = node.Labels[v1.LabelTopologyRegion]
+		}
+
+		vmID, err = strconv.Atoi(node.Annotations[AnnotationProxmoxInstanceID])
+		if err != nil {
+			return 0, "", fmt.Errorf("instances.getProviderIDFromNode() parse annotation error: %v", err)
+		}
+
+		if _, err := i.c.pxpool.GetProxmoxCluster(region); err != nil {
+			return 0, "", fmt.Errorf("instances.getProviderIDFromNode() get cluster error: %v", err)
+		}
+
+		return vmID, region, nil
+	}
+
+	return 0, "", fmt.Errorf("instances.getProviderIDFromNode() no annotation found")
 }

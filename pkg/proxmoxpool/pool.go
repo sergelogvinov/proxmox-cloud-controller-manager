@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 
 	proxmox "github.com/luthermonson/go-proxmox"
@@ -192,16 +193,18 @@ func (c *ProxmoxPool) DeleteVMByIDInRegion(ctx context.Context, region string, v
 	return px.DeleteVMByID(ctx, vm.Node, int(vm.VMID))
 }
 
-// GetNodeGroup returns a Proxmox node ha-group in a given region.
-func (c *ProxmoxPool) GetNodeGroup(ctx context.Context, region string, node string) (string, error) {
+// GetNodeHAGroups returns a Proxmox node ha-group in a given region for the node.
+func (c *ProxmoxPool) GetNodeHAGroups(ctx context.Context, region string, node string) ([]string, error) {
+	groups := []string{}
+
 	px, err := c.GetProxmoxCluster(region)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	haGroups, err := px.GetHAGroupList(ctx)
 	if err != nil {
-		return "", fmt.Errorf("error get ha-groups %v", err)
+		return nil, fmt.Errorf("error get ha-groups %v", err)
 	}
 
 	for _, g := range haGroups {
@@ -211,12 +214,18 @@ func (c *ProxmoxPool) GetNodeGroup(ctx context.Context, region string, node stri
 
 		for n := range strings.SplitSeq(g.Nodes, ",") {
 			if node == strings.Split(n, ":")[0] {
-				return g.Group, nil
+				groups = append(groups, g.Group)
 			}
 		}
 	}
 
-	return "", ErrHAGroupNotFound
+	if len(groups) > 0 {
+		slices.Sort(groups)
+
+		return groups, nil
+	}
+
+	return nil, ErrHAGroupNotFound
 }
 
 // FindVMByNode find a VM by kubernetes node resource in all Proxmox clusters.

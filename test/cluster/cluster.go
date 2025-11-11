@@ -22,6 +22,8 @@ import (
 
 	"github.com/jarcoal/httpmock"
 	"github.com/luthermonson/go-proxmox"
+
+	goproxmox "github.com/sergelogvinov/go-proxmox"
 )
 
 // SetupMockResponders sets up the HTTP mock responders for Proxmox API calls.
@@ -36,6 +38,15 @@ func SetupMockResponders() {
 		func(_ *http.Request) (*http.Response, error) {
 			return httpmock.NewJsonResponse(200, map[string]any{
 				"data": proxmox.NodeStatuses{{Name: "pve-1"}, {Name: "pve-2"}, {Name: "pve-3"}, {Name: "pve-4"}},
+			})
+		})
+	httpmock.RegisterResponder(http.MethodGet, `=~/cluster/ha/groups`,
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(200, map[string]any{
+				"data": []goproxmox.HAGroup{
+					{Group: "rnd", Type: "group", Nodes: "pve-1,pve-2"},
+					{Group: "dev", Type: "group", Nodes: "pve-4"},
+				},
 			})
 		})
 
