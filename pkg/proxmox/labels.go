@@ -23,6 +23,6 @@ const (
 	// LabelTopologyZone is the label used to store the Proxmox zone name.
 	LabelTopologyZone = "topology." + Group + "/zone"
 
-	// LabelTopologyHAGroup is the label used to store the Proxmox HA group name.
-	LabelTopologyHAGroup = "topology." + Group + "/ha-group"
+	// LabelTopologyHAGroupPrefix is the prefix for labels used to store Proxmox HA group information.
+	LabelTopologyHAGroupPrefix = "group.topology." + Group + "/"
 )

@@ -54,7 +54,8 @@ metadata:
     # Proxmox specific labels
     topology.proxmox.sinextra.dev/region: cluster-1
     topology.proxmox.sinextra.dev/zone: pve-node-1
-    topology.proxmox.sinextra.dev/ha-group: default
+    # HA group labels - the same idea as node-role
+    group.topology.proxmox.sinextra.dev/${HAGroup}: ""
 
   name: worker-1
 spec:
