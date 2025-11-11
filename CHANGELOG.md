@@ -1,5 +1,20 @@
-
 <a name="v0.11.0"></a>
+## [0.12.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.11.0...v0.12.0) (2025-11-11)
+
+
+### Features
+
+* add release-please ([a33ea6e](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/a33ea6ead7ea03fc0e2addd2ff74afb5a87936bb))
+* enhance ha-group handling ([706faa8](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/706faa8d088bb0467770d364b374f060398e9b25))
+
+
+### Bug Fixes
+
+* **chart:** provider value typo ([dac1775](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/dac1775cf2abcf2e8fb2b597a9672bd1c63d26a7))
+* handle inaccessible nodes ([0a31716](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/0a31716c17dd601fbe36025186de86e2d47e82cd))
+* log error when instance metadata retrieval fails ([d2181a8](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/d2181a88f6b905544b6a2c9bd4e70e0bbf1da690))
+* release please ([fced446](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/fced446f46cec5c0d8091ec918d4f4a2c1e6ad0e))
+
 ## [v0.11.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.10.0...v0.11.0) (2025-09-08)
 
 Welcome to the v0.11.0 release of Kubernetes cloud controller manager for Proxmox!
