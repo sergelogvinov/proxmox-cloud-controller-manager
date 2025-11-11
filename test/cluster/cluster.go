@@ -35,7 +35,7 @@ func SetupMockResponders() {
 	httpmock.RegisterResponder(http.MethodGet, `=~/cluster/status`,
 		func(_ *http.Request) (*http.Response, error) {
 			return httpmock.NewJsonResponse(200, map[string]any{
-				"data": proxmox.NodeStatuses{{Name: "pve-1"}, {Name: "pve-2"}, {Name: "pve-3"}},
+				"data": proxmox.NodeStatuses{{Name: "pve-1"}, {Name: "pve-2"}, {Name: "pve-3"}, {Name: "pve-4"}},
 			})
 		})
 
@@ -78,6 +78,15 @@ func SetupMockResponders() {
 						MaxMem: 5 * 1024 * 1024 * 1024,
 						Status: "running",
 					},
+					&proxmox.ClusterResource{
+						Node:   "pve-4",
+						Type:   "qemu",
+						VMID:   104,
+						Name:   "cluster-1-node-4",
+						MaxCPU: 2,
+						MaxMem: 4 * 1024 * 1024 * 1024,
+						Status: "unknown",
+					},
 
 					&proxmox.ClusterResource{
 						ID:         "storage/smb",
@@ -118,6 +127,15 @@ func SetupMockResponders() {
 						Status:     "available",
 					},
 					&proxmox.ClusterResource{
+						ID:         "storage/zfs",
+						Type:       "storage",
+						PluginType: "zfspool",
+						Node:       "pve-4",
+						Storage:    "zfs",
+						Content:    "images",
+						Status:     "unknown",
+					},
+					&proxmox.ClusterResource{
 						ID:         "storage/lvm",
 						Type:       "storage",
 						PluginType: "lvm",
@@ -134,6 +152,15 @@ func SetupMockResponders() {
 						Storage:    "local-lvm",
 						Content:    "images",
 						Status:     "available",
+					},
+					&proxmox.ClusterResource{
+						ID:         "storage/lvm",
+						Type:       "storage",
+						PluginType: "lvm",
+						Node:       "pve-4",
+						Storage:    "local-lvm",
+						Content:    "images",
+						Status:     "unknown",
 					},
 				},
 			})
@@ -158,6 +185,10 @@ func SetupMockResponders() {
 				"data": proxmox.Node{},
 			})
 		})
+	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-4/status`,
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewBytesResponse(595, []byte{}), nil
+		})
 
 	httpmock.RegisterResponder(http.MethodGet, "=~/nodes$",
 		func(_ *http.Request) (*http.Response, error) {
@@ -174,6 +205,10 @@ func SetupMockResponders() {
 					{
 						Node:   "pve-3",
 						Status: "online",
+					},
+					{
+						Node:   "pve-4",
+						Status: "offline",
 					},
 				},
 			})
@@ -305,6 +340,10 @@ func SetupMockResponders() {
 				},
 			})
 		})
+	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-4/qemu$`,
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewBytesResponse(595, []byte{}), nil
+		})
 
 	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-1/qemu/100/status/current`,
 		func(_ *http.Request) (*http.Response, error) {
@@ -377,7 +416,7 @@ func SetupMockResponders() {
 			})
 		},
 	)
-	httpmock.RegisterResponder("GET", `=~/nodes/pve-3/qemu/103/config`,
+	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-3/qemu/103/config`,
 		func(_ *http.Request) (*http.Response, error) {
 			return httpmock.NewJsonResponse(200, map[string]any{
 				"data": map[string]any{
@@ -387,8 +426,13 @@ func SetupMockResponders() {
 			})
 		},
 	)
+	httpmock.RegisterResponder(http.MethodGet, `=~/nodes/pve-4/qemu/`,
+		func(_ *http.Request) (*http.Response, error) {
+			return httpmock.NewBytesResponse(595, []byte{}), nil
+		},
+	)
 
-	httpmock.RegisterResponder("PUT", "https://127.0.0.1:8006/api2/json/nodes/pve-1/qemu/100/resize",
+	httpmock.RegisterResponder(http.MethodPut, "https://127.0.0.1:8006/api2/json/nodes/pve-1/qemu/100/resize",
 		func(_ *http.Request) (*http.Response, error) {
 			return httpmock.NewJsonResponse(200, map[string]any{
 				"data": "",

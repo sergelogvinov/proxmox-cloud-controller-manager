@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 
+	goproxmox "github.com/sergelogvinov/go-proxmox"
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	metrics "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/metrics"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
@@ -112,10 +113,16 @@ func (i *instances) InstanceExists(ctx context.Context, node *v1.Node) (bool, er
 
 	mc := metrics.NewMetricContext("getVmInfo")
 	if _, err := i.getInstanceInfo(ctx, node); mc.ObserveRequest(err) != nil {
-		if err == cloudprovider.InstanceNotFound {
+		if errors.Is(err, cloudprovider.InstanceNotFound) {
 			klog.V(4).InfoS("instances.InstanceExists() instance not found", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
 
 			return false, nil
+		}
+
+		if errors.Is(err, proxmoxpool.ErrNodeInaccessible) {
+			klog.V(4).InfoS("instances.InstanceExists() proxmox node inaccessible, cannot define instance status", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
+
+			return true, nil
 		}
 
 		return false, err
@@ -193,8 +200,14 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 	if mc.ObserveRequest(err) != nil {
 		klog.ErrorS(err, "instances.InstanceMetadata() failed to get instance info", "node", klog.KObj(node))
 
-		if err == proxmoxpool.ErrInstanceNotFound {
+		if errors.Is(err, cloudprovider.InstanceNotFound) {
 			klog.V(4).InfoS("instances.InstanceMetadata() instance not found", "node", klog.KObj(node), "providerID", providerID)
+
+			return &cloudprovider.InstanceMetadata{}, nil
+		}
+
+		if errors.Is(err, proxmoxpool.ErrNodeInaccessible) {
+			klog.V(4).InfoS("instances.InstanceMetadata() proxmox node inaccessible, cannot get instance metadata", "node", klog.KObj(node), "providerID", providerID)
 
 			return &cloudprovider.InstanceMetadata{}, nil
 		}
@@ -202,24 +215,18 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 		return nil, err
 	}
 
-	additionalLabels := map[string]string{
+	annotations := map[string]string{}
+	labels := map[string]string{
 		LabelTopologyRegion: info.Region,
-		LabelTopologyNode:   info.Node,
+		LabelTopologyZone:   info.Zone,
 	}
 
 	if providerID == "" {
 		if i.provider == providerconfig.ProviderCapmox {
 			providerID = provider.GetProviderIDFromUUID(info.UUID)
+			annotations[AnnotationProxmoxInstanceID] = fmt.Sprintf("%d", info.ID)
 		} else {
 			providerID = provider.GetProviderIDFromID(info.Region, info.ID)
-		}
-
-		annotations := map[string]string{
-			AnnotationProxmoxInstanceID: fmt.Sprintf("%d", info.ID),
-		}
-
-		if err := syncNodeAnnotations(ctx, i.c.kclient, node, annotations); err != nil {
-			klog.ErrorS(err, "error updating annotations for the node", "node", klog.KRef("", node.Name))
 		}
 	}
 
@@ -229,7 +236,7 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 		InstanceType:     info.Type,
 		Zone:             info.Zone,
 		Region:           info.Region,
-		AdditionalLabels: additionalLabels,
+		AdditionalLabels: labels,
 	}
 
 	if i.zoneAsHAGroup {
@@ -241,12 +248,20 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 		}
 
 		metadata.Zone = haGroup
-		additionalLabels[LabelTopologyHAGroup] = haGroup
+		labels[LabelTopologyHAGroup] = haGroup
 	}
 
-	if len(additionalLabels) > 0 && !hasUninitializedTaint(node) {
-		if err := syncNodeLabels(i.c, node, additionalLabels); err != nil {
-			klog.ErrorS(err, "error updating labels for the node", "node", klog.KRef("", node.Name))
+	if !hasUninitializedTaint(node) {
+		if len(labels) > 0 {
+			if err := syncNodeLabels(i.c, node, labels); err != nil {
+				klog.ErrorS(err, "error updating labels for the node", "node", klog.KRef("", node.Name))
+			}
+		}
+	}
+
+	if len(annotations) > 0 {
+		if err := syncNodeAnnotations(ctx, i.c.kclient, node, annotations); err != nil {
+			klog.ErrorS(err, "error updating annotations for the node", "node", klog.KRef("", node.Name))
 		}
 	}
 
@@ -265,28 +280,37 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 	)
 
 	providerID := node.Spec.ProviderID
-	if providerID == "" && node.Annotations[AnnotationProxmoxInstanceID] != "" {
-		region = node.Labels[LabelTopologyRegion]
-		if region == "" {
-			region = node.Labels[v1.LabelTopologyRegion]
+
+	vmID, region, err = provider.ParseProviderID(providerID)
+	if err != nil {
+		if i.provider == providerconfig.ProviderDefault {
+			klog.V(4).InfoS("instances.getInstanceInfo() failed to parse providerID", "node", klog.KObj(node), "providerID", providerID)
 		}
 
-		vmID, err = strconv.Atoi(node.Annotations[AnnotationProxmoxInstanceID])
-		if err != nil {
-			return nil, fmt.Errorf("instances.getInstanceInfo() parse annotation error: %v", err)
-		}
+		// ProviderID parsing failed, probably cluster is running with kubernetes distribution
+		if node.Annotations[AnnotationProxmoxInstanceID] != "" {
+			region = node.Labels[LabelTopologyRegion]
+			if region == "" {
+				region = node.Labels[v1.LabelTopologyRegion]
+			}
 
-		if _, err := i.c.pxpool.GetProxmoxCluster(region); err == nil {
-			providerID = provider.GetProviderIDFromID(region, vmID)
+			vmID, err = strconv.Atoi(node.Annotations[AnnotationProxmoxInstanceID])
+			if err != nil {
+				return nil, fmt.Errorf("instances.getInstanceInfo() parse annotation error: %v", err)
+			}
 
-			klog.V(4).InfoS("instances.getInstanceInfo() set providerID", "node", klog.KObj(node), "providerID", providerID)
+			if _, err := i.c.pxpool.GetProxmoxCluster(region); err == nil {
+				providerID = provider.GetProviderIDFromID(region, vmID)
+
+				klog.V(4).InfoS("instances.getInstanceInfo() set providerID", "node", klog.KObj(node), "providerID", providerID)
+			}
 		}
 	}
 
-	if providerID == "" {
-		klog.V(4).InfoS("instances.getInstanceInfo() empty providerID, trying find node", "node", klog.KObj(node))
+	if vmID == 0 || region == "" {
+		klog.V(4).InfoS("instances.getInstanceInfo() trying find node", "node", klog.KObj(node), "providerID", providerID)
 
-		mc := metrics.NewMetricContext("findVmByName")
+		mc := metrics.NewMetricContext("findVmByNode")
 
 		vmID, region, err = i.c.pxpool.FindVMByNode(ctx, node)
 		if mc.ObserveRequest(err) != nil {
@@ -294,46 +318,34 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 
 			vmID, region, err = i.c.pxpool.FindVMByUUID(ctx, node.Status.NodeInfo.SystemUUID)
 			if mc.ObserveRequest(err) != nil {
-				return nil, err
-			}
-		}
-
-		if vmID == 0 {
-			return nil, cloudprovider.InstanceNotFound
-		}
-
-		providerID = provider.GetProviderIDFromID(region, vmID)
-	}
-
-	if vmID == 0 {
-		vmID, region, err = provider.ParseProviderID(providerID)
-		if err != nil {
-			if i.provider == providerconfig.ProviderDefault {
-				klog.V(4).InfoS("instances.getInstanceInfo() failed to parse providerID, trying find by name", "node", klog.KObj(node), "providerID", providerID)
-			}
-
-			vmID, region, err = i.c.pxpool.FindVMByUUID(ctx, node.Status.NodeInfo.SystemUUID)
-			if err != nil {
 				if errors.Is(err, proxmoxpool.ErrInstanceNotFound) {
 					return nil, cloudprovider.InstanceNotFound
 				}
 
-				return nil, fmt.Errorf("instances.getInstanceInfo() error: %v", err)
+				return nil, err
 			}
 		}
+
+		providerID = provider.GetProviderIDFromID(region, vmID)
+
+		klog.V(4).InfoS("instances.getInstanceInfo() set providerID", "node", klog.KObj(node), "providerID", providerID)
 	}
 
 	px, err := i.c.pxpool.GetProxmoxCluster(region)
 	if err != nil {
-		return nil, fmt.Errorf("instances.getInstanceInfo() error: %v", err)
+		return nil, err
 	}
 
-	mc := metrics.NewMetricContext("getVmInfo")
+	mc := metrics.NewMetricContext("getVMConfig")
 
 	vm, err := px.GetVMConfig(ctx, vmID)
 	if mc.ObserveRequest(err) != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return nil, cloudprovider.InstanceNotFound
+		}
+
+		if errors.Is(err, goproxmox.ErrVirtualMachineUnreachable) {
+			return nil, proxmoxpool.ErrNodeInaccessible
 		}
 
 		return nil, err

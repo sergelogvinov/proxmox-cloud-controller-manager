@@ -141,7 +141,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 				},
 			},
 			expected:      false,
-			expectedError: "instances.getInstanceInfo() error: region not found",
+			expectedError: "region not found",
 		},
 		{
 			msg: "NodeNotExists",
@@ -162,7 +162,10 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 					Name: "cluster-1-node-1",
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, "proxmox://11833f4c-341f-4bd3-aad7-f7abed000000", "proxmox://cluster-1/100"),
+					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+						"proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
+						"proxmox://cluster-1/100",
+					),
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -179,7 +182,10 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 					Name: "cluster-1-node-3",
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, "proxmox://11833f4c-341f-4bd3-aad7-f7abed000000", "proxmox://cluster-1/100"),
+					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+						"proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
+						"proxmox://cluster-1/100",
+					),
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -196,7 +202,10 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 					Name: "cluster-1-node-1",
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, "proxmox://8af7110d-0000-0000-0000-9527d10a6583", "proxmox://cluster-1/100"),
+					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+						"proxmox://8af7110d-0000-0000-0000-9527d10a6583",
+						"proxmox://cluster-1/100",
+					),
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -204,7 +213,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 					},
 				},
 			},
-			expected: false,
+			expected: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, true, false),
 		},
 		{
 			msg: "NodeExistsWithDifferentNameAndUUID",
@@ -224,10 +233,65 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 			expected: false,
 		},
 		{
+			msg: "NodeExistsOfflinePVENode",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-1-node-4",
+					Annotations: map[string]string{
+						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+						AnnotationProxmoxInstanceID:                    "104",
+					},
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abea000002",
+					},
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+						"proxmox://11833f4c-341f-4bd3-aad7-f7abea000002",
+						"proxmox://cluster-1/104"),
+				},
+			},
+			expected: true,
+		},
+		{
+			msg: "NodeExistsOfflinePVENodeUninitialized",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-1-node-4",
+					Annotations: map[string]string{
+						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+					},
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abea000002",
+					},
+				},
+				Spec: v1.NodeSpec{
+					Taints: []v1.Taint{
+						{
+							Key:    cloudproviderapi.TaintExternalCloudProvider,
+							Value:  "true",
+							Effect: v1.TaintEffectNoSchedule,
+						},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
 			msg: "NodeUUIDNotFoundCAPMox",
 			node: &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "talos-rqa-u7y",
+					Name: "node-rqa-u7y",
+					Annotations: map[string]string{
+						AnnotationProxmoxInstanceID: "105",
+					},
+					Labels: map[string]string{
+						LabelTopologyRegion: "cluster-1",
+					},
 				},
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://d290d7f2-b179-404c-b627-6e4dccb59066",
@@ -235,23 +299,6 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
 						SystemUUID: "d290d7f2-b179-404c-b627-6e4dccb59066",
-					},
-				},
-			},
-			expected: false,
-		},
-		{
-			msg: "NodeUUIDNotFoundCAPMoxDifferentFormat",
-			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "talos-missing-node",
-				},
-				Spec: v1.NodeSpec{
-					ProviderID: "proxmox://00000000-0000-0000-0000-000000000000",
-				},
-				Status: v1.NodeStatus{
-					NodeInfo: v1.NodeSystemInfo{
-						SystemUUID: "00000000-0000-0000-0000-000000000000",
 					},
 				},
 			},
@@ -277,7 +324,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 	}
 
 	for _, testCase := range tests {
-		ts.Run(fmt.Sprint(testCase.msg), func() {
+		ts.Run(fmt.Sprintf("%s/%s", ts.configCase.name, testCase.msg), func() {
 			exists, err := ts.i.InstanceExists(ts.T().Context(), testCase.node)
 
 			if testCase.expectedError != "" {
@@ -420,10 +467,58 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 			},
 			expected: false,
 		},
+		{
+			msg: "NodeExistsOfflinePVENode",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-1-node-4",
+					Annotations: map[string]string{
+						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+					},
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abea000002",
+					},
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+						"proxmox://11833f4c-341f-4bd3-aad7-f7abea000002",
+						"proxmox://cluster-1/104"),
+				},
+			},
+			expected: false,
+		},
+		{
+			msg: "NodeExistsOfflinePVENodeUninitialized",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-1-node-4",
+					Annotations: map[string]string{
+						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+					},
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abea000002",
+					},
+				},
+				Spec: v1.NodeSpec{
+					Taints: []v1.Taint{
+						{
+							Key:    cloudproviderapi.TaintExternalCloudProvider,
+							Value:  "true",
+							Effect: v1.TaintEffectNoSchedule,
+						},
+					},
+				},
+			},
+			expected: false,
+		},
 	}
 
 	for _, testCase := range tests {
-		ts.Run(fmt.Sprint(testCase.msg), func() {
+		ts.Run(fmt.Sprintf("%s/%s", ts.configCase.name, testCase.msg), func() {
 			exists, err := ts.i.InstanceShutdown(ts.T().Context(), testCase.node)
 
 			if testCase.expectedError != "" {
@@ -473,6 +568,30 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 			expected: &cloudprovider.InstanceMetadata{},
 		},
 		{
+			msg: "NodeForeignProviderIDWithAnnotationAndLabel",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-1-node-1",
+					Annotations: map[string]string{
+						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+						AnnotationProxmoxInstanceID:                    "100",
+					},
+					Labels: map[string]string{
+						LabelTopologyRegion: "cluster-1",
+					},
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abed000000",
+					},
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: "foreign://provider-id",
+				},
+			},
+			expected: &cloudprovider.InstanceMetadata{},
+		},
+		{
 			msg: "NodeWrongCluster",
 			node: &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{
@@ -486,7 +605,7 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected:      &cloudprovider.InstanceMetadata{},
-			expectedError: "instances.getInstanceInfo() error: region not found",
+			expectedError: "region not found",
 		},
 		{
 			msg: "NodeNotExists",
@@ -501,8 +620,7 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 					ProviderID: "proxmox://cluster-1/500",
 				},
 			},
-			expected:      &cloudprovider.InstanceMetadata{},
-			expectedError: cloudprovider.InstanceNotFound.Error(),
+			expected: &cloudprovider.InstanceMetadata{},
 		},
 		{
 			msg: "NodeExists",
@@ -529,7 +647,10 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, "proxmox://11833f4c-341f-4bd3-aad7-f7abed000000", "proxmox://cluster-1/100"),
+				ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					"proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
+					"proxmox://cluster-1/100",
+				),
 				NodeAddresses: []v1.NodeAddress{
 					{
 						Type:    v1.NodeHostName,
@@ -544,8 +665,8 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				Region:       "cluster-1",
 				Zone:         "pve-1",
 				AdditionalLabels: map[string]string{
-					"topology.proxmox.sinextra.dev/node":   "pve-1",
 					"topology.proxmox.sinextra.dev/region": "cluster-1",
+					"topology.proxmox.sinextra.dev/zone":   "pve-1",
 				},
 			},
 		},
@@ -574,7 +695,10 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, "proxmox://11833f4c-341f-4bd3-aad7-f7abed000000", "proxmox://cluster-1/100"),
+				ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					"proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
+					"proxmox://cluster-1/100",
+				),
 				NodeAddresses: []v1.NodeAddress{
 					{
 						Type:    v1.NodeHostName,
@@ -593,10 +717,59 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				Region:       "cluster-1",
 				Zone:         "pve-1",
 				AdditionalLabels: map[string]string{
-					"topology.proxmox.sinextra.dev/node":   "pve-1",
 					"topology.proxmox.sinextra.dev/region": "cluster-1",
+					"topology.proxmox.sinextra.dev/zone":   "pve-1",
 				},
 			},
+		},
+		{
+			msg: "NodeExistsOfflinePVENode",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-1-node-4",
+					Annotations: map[string]string{
+						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+						AnnotationProxmoxInstanceID:                    "104",
+					},
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abea000002",
+					},
+				},
+				Spec: v1.NodeSpec{
+					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+						"proxmox://11833f4c-341f-4bd3-aad7-f7abea000002",
+						"proxmox://cluster-1/104"),
+				},
+			},
+			expected: &cloudprovider.InstanceMetadata{},
+		},
+		{
+			msg: "NodeExistsOfflinePVENodeUninitialized",
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-1-node-4",
+					Annotations: map[string]string{
+						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+					},
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abea000002",
+					},
+				},
+				Spec: v1.NodeSpec{
+					Taints: []v1.Taint{
+						{
+							Key:    cloudproviderapi.TaintExternalCloudProvider,
+							Value:  "true",
+							Effect: v1.TaintEffectNoSchedule,
+						},
+					},
+				},
+			},
+			expected: &cloudprovider.InstanceMetadata{},
 		},
 		{
 			msg: "NodeExistsCluster2",
@@ -623,7 +796,10 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, "proxmox://11833f4c-341f-4bd3-aad7-f7abea000000", "proxmox://cluster-2/103"),
+				ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					"proxmox://11833f4c-341f-4bd3-aad7-f7abea000000",
+					"proxmox://cluster-2/103",
+				),
 				NodeAddresses: []v1.NodeAddress{
 					{
 						Type:    v1.NodeHostName,
@@ -638,15 +814,15 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				Region:       "cluster-2",
 				Zone:         "pve-3",
 				AdditionalLabels: map[string]string{
-					"topology.proxmox.sinextra.dev/node":   "pve-3",
 					"topology.proxmox.sinextra.dev/region": "cluster-2",
+					"topology.proxmox.sinextra.dev/zone":   "pve-3",
 				},
 			},
 		},
 	}
 
 	for _, testCase := range tests {
-		ts.Run(fmt.Sprint(testCase.msg), func() {
+		ts.Run(fmt.Sprintf("%s/%s", ts.configCase.name, testCase.msg), func() {
 			meta, err := ts.i.InstanceMetadata(ts.T().Context(), testCase.node)
 
 			if testCase.expectedError != "" {

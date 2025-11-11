@@ -48,7 +48,7 @@ Official [documentation](https://pve.proxmox.com/wiki/User_Management)
 
 ```shell
 # Create role CCM
-pveum role add CCM -privs "VM.Audit"
+pveum role add CCM -privs "VM.Audit Sys.Audit"
 # Create user and grant permissions
 pveum user add kubernetes@pve
 pveum aclmod / -user kubernetes@pve -role CCM

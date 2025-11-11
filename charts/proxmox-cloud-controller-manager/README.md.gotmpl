@@ -28,7 +28,7 @@ You need to set `--cloud-provider=external` in the kubelet argument for all node
 
 ```shell
 # Create role CCM
-pveum role add CCM -privs "VM.Audit"
+pveum role add CCM -privs "VM.Audit Sys.Audit"
 # Create user and grant permissions
 pveum user add kubernetes@pve
 pveum aclmod / -user kubernetes@pve -role CCM

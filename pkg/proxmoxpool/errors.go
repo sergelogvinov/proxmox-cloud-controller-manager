@@ -29,4 +29,7 @@ var (
 	ErrZoneNotFound = errors.New("zone not found")
 	// ErrInstanceNotFound is returned when an instance is not found in the Proxmox
 	ErrInstanceNotFound = errors.New("instance not found")
+
+	// ErrNodeInaccessible is returned when a Proxmox node cannot be reached or accessed
+	ErrNodeInaccessible = errors.New("node is inaccessible")
 )
