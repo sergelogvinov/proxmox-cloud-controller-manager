@@ -1,12 +1,20 @@
 # Make release
 
+## Change release version
+
 ```shell
-git checkout -b release-0.0.2
-git tag v0.0.2
+git commit --allow-empty -m "chore: release 2.0.0" -m "Release-As: 2.0.0"
+```
+
+## Update helm chart and documentation
+
+```shell
+git branch -D release-please--branches--main
+git checkout release-please--branches--main
+export `jq -r '"TAG=v"+.[]' hack/release-please-manifest.json`
 
 make helm-unit docs
-make release-update
 
 git add .
-git commit
+git commit -s --amend
 ```
