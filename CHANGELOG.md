@@ -1,4 +1,12 @@
 <a name="v0.11.0"></a>
+## [0.12.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.12.0...v0.12.1) (2025-11-11)
+
+
+### Bug Fixes
+
+* helm chart release ([3983d5b](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/3983d5ba102afcaa6ec0ad91fdc350c0b2b0e4d3))
+* release please ([63418b0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/63418b011763fed9620196430bbb9791308bdc30))
+
 ## [0.12.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.11.0...v0.12.0) (2025-11-11)
 
 
