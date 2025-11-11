@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	proxmox "github.com/luthermonson/go-proxmox"
+	"go.uber.org/multierr"
 
 	goproxmox "github.com/sergelogvinov/go-proxmox"
 
@@ -220,6 +221,8 @@ func (c *ProxmoxPool) GetNodeGroup(ctx context.Context, region string, node stri
 
 // FindVMByNode find a VM by kubernetes node resource in all Proxmox clusters.
 func (c *ProxmoxPool) FindVMByNode(ctx context.Context, node *v1.Node) (vmID int, region string, err error) {
+	var errs error
+
 	for region, px := range c.clients {
 		vmid, err := px.FindVMByFilter(ctx, func(rs *proxmox.ClusterResource) (bool, error) {
 			if rs.Type != "qemu" {
@@ -230,9 +233,17 @@ func (c *ProxmoxPool) FindVMByNode(ctx context.Context, node *v1.Node) (vmID int
 				return false, nil
 			}
 
+			if rs.Status == "unknown" {
+				errs = multierr.Append(errs, fmt.Errorf("region %s node %s: %w", region, rs.Node, ErrNodeInaccessible))
+
+				return false, nil //nolint: nilerr
+			}
+
 			pxnode, err := px.Client.Node(ctx, rs.Node)
 			if err != nil {
-				return false, err
+				errs = multierr.Append(errs, fmt.Errorf("region %s node %s: %v: %w", region, rs.Node, err, ErrNodeInaccessible))
+
+				return false, nil //nolint: nilerr
 			}
 
 			vm, err := pxnode.VirtualMachine(ctx, int(rs.VMID))
@@ -264,20 +275,34 @@ func (c *ProxmoxPool) FindVMByNode(ctx context.Context, node *v1.Node) (vmID int
 		return vmid, region, nil
 	}
 
+	if errs != nil {
+		return 0, "", errs
+	}
+
 	return 0, "", ErrInstanceNotFound
 }
 
 // FindVMByUUID find a VM by uuid in all Proxmox clusters.
 func (c *ProxmoxPool) FindVMByUUID(ctx context.Context, uuid string) (vmID int, region string, err error) {
+	var errs error
+
 	for region, px := range c.clients {
 		vmid, err := px.FindVMByFilter(ctx, func(rs *proxmox.ClusterResource) (bool, error) {
 			if rs.Type != "qemu" {
 				return false, nil
 			}
 
+			if rs.Status == "unknown" {
+				errs = multierr.Append(errs, fmt.Errorf("region %s node %s: %w", region, rs.Node, ErrNodeInaccessible))
+
+				return false, nil //nolint: nilerr
+			}
+
 			pxnode, err := px.Client.Node(ctx, rs.Node)
 			if err != nil {
-				return false, err
+				errs = multierr.Append(errs, fmt.Errorf("region %s node %s: %v: %w", region, rs.Node, err, ErrNodeInaccessible))
+
+				return false, nil //nolint: nilerr
 			}
 
 			vm, err := pxnode.VirtualMachine(ctx, int(rs.VMID))
@@ -300,6 +325,10 @@ func (c *ProxmoxPool) FindVMByUUID(ctx context.Context, uuid string) (vmID int, 
 		}
 
 		return vmid, region, nil
+	}
+
+	if errs != nil {
+		return 0, "", errs
 	}
 
 	return 0, "", ErrInstanceNotFound

@@ -53,7 +53,7 @@ metadata:
 
     # Proxmox specific labels
     topology.proxmox.sinextra.dev/region: cluster-1
-    topology.proxmox.sinextra.dev/node: pve-node-1
+    topology.proxmox.sinextra.dev/zone: pve-node-1
     topology.proxmox.sinextra.dev/ha-group: default
 
   name: worker-1
