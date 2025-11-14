@@ -1,4 +1,11 @@
 <a name="v0.11.0"></a>
+## [0.12.2](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.12.1...v0.12.2) (2025-11-14)
+
+
+### Bug Fixes
+
+* ha-groups ([66d2e70](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/66d2e7023010f517e422a3b56519fb9600afe9dd))
+
 ## [0.12.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.12.0...v0.12.1) (2025-11-11)
 
 
