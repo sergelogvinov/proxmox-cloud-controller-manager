@@ -250,8 +250,6 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 	if err != nil {
 		if !errors.Is(err, proxmoxpool.ErrHAGroupNotFound) {
 			klog.ErrorS(err, "instances.InstanceMetadata() failed to get HA group for the node", "node", klog.KRef("", node.Name), "region", info.Region)
-
-			return nil, err
 		}
 	}
 
