@@ -62,8 +62,6 @@ linters:
   settings:
     importas:
       alias:
-        - pkg: github.com/Telmate/proxmox-api-go/proxmox
-          alias: proxmoxapi
         - pkg: github.com/sergelogvinov/proxmox-cloud-controller/manager/metrics
           alias: metrics
         - pkg: github.com/sergelogvinov/proxmox-cloud-controller/proxmoxpool
