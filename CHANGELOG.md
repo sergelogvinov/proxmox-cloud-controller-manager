@@ -1,4 +1,11 @@
 <a name="v0.11.0"></a>
+## [0.12.3](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.12.2...v0.12.3) (2026-01-03)
+
+
+### Bug Fixes
+
+* reduce api calls ([8923f5d](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/8923f5d852c8e376ac7081953158f597a7e6b930))
+
 ## [0.12.2](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.12.1...v0.12.2) (2025-11-14)
 
 
