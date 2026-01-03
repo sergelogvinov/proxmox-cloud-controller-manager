@@ -353,7 +353,7 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 
 	info := &instanceInfo{
 		ID:     vmID,
-		UUID:   i.c.pxpool.GetVMUUID(vm),
+		UUID:   goproxmox.GetVMUUID(vm),
 		Name:   vm.Name,
 		Node:   vm.Node,
 		Region: region,
@@ -372,7 +372,7 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 		return nil, cloudprovider.InstanceNotFound
 	}
 
-	info.Type = i.c.pxpool.GetVMSKU(vm)
+	info.Type = goproxmox.GetVMSKU(vm)
 	if !instanceTypeNameRegexp.MatchString(info.Type) {
 		info.Type = fmt.Sprintf("%dVCPU-%dGB", vm.CPUs, vm.MaxMem/1024/1024/1024)
 	}

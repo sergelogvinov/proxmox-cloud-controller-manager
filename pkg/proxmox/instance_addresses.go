@@ -172,12 +172,7 @@ func (i *instances) getInstanceNics(ctx context.Context, info *instanceInfo) ([]
 		return result, err
 	}
 
-	node, err := px.Node(ctx, info.Node)
-	if err != nil {
-		return nil, err
-	}
-
-	vm, err := node.VirtualMachine(ctx, info.ID)
+	vm, err := px.GetVMConfig(ctx, info.ID)
 	if err != nil {
 		return nil, err
 	}
