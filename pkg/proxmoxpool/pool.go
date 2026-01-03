@@ -20,7 +20,6 @@ package proxmoxpool
 import (
 	"context"
 	"crypto/tls"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -138,13 +137,10 @@ func (c *ProxmoxPool) CheckClusters(ctx context.Context) error {
 			return fmt.Errorf("failed to initialized proxmox client in region %s, error: %v", region, err)
 		}
 
-		pxCluster, err := pxClient.Cluster(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to get cluster info in region %s, error: %v", region, err)
-		}
+		cluster := (&proxmox.Cluster{}).New(pxClient.Client)
 
 		// Check if we can have permission to list VMs
-		vms, err := pxCluster.Resources(ctx, "vm")
+		vms, err := cluster.Resources(ctx, "vm")
 		if err != nil {
 			return fmt.Errorf("failed to get list of VMs in region %s, error: %v", region, err)
 		}
@@ -248,22 +244,12 @@ func (c *ProxmoxPool) FindVMByNode(ctx context.Context, node *v1.Node) (vmID int
 				return false, nil //nolint: nilerr
 			}
 
-			pxnode, err := px.Client.Node(ctx, rs.Node)
-			if err != nil {
-				errs = multierr.Append(errs, fmt.Errorf("region %s node %s: %v: %w", region, rs.Node, err, ErrNodeInaccessible))
-
-				return false, nil //nolint: nilerr
-			}
-
-			vm, err := pxnode.VirtualMachine(ctx, int(rs.VMID))
+			vm, err := px.GetVMConfig(ctx, int(rs.VMID))
 			if err != nil {
 				return false, err
 			}
 
-			smbios1 := goproxmox.VMSMBIOS{}
-			smbios1.UnmarshalString(vm.VirtualMachineConfig.SMBios1) //nolint:errcheck
-
-			if smbios1.UUID == node.Status.NodeInfo.SystemUUID {
+			if goproxmox.GetVMUUID(vm) == node.Status.NodeInfo.SystemUUID {
 				return true, nil
 			}
 
@@ -307,19 +293,12 @@ func (c *ProxmoxPool) FindVMByUUID(ctx context.Context, uuid string) (vmID int, 
 				return false, nil //nolint: nilerr
 			}
 
-			pxnode, err := px.Client.Node(ctx, rs.Node)
-			if err != nil {
-				errs = multierr.Append(errs, fmt.Errorf("region %s node %s: %v: %w", region, rs.Node, err, ErrNodeInaccessible))
-
-				return false, nil //nolint: nilerr
-			}
-
-			vm, err := pxnode.VirtualMachine(ctx, int(rs.VMID))
+			vm, err := px.GetVMConfig(ctx, int(rs.VMID))
 			if err != nil {
 				return false, err
 			}
 
-			if c.GetVMUUID(vm) == uuid {
+			if goproxmox.GetVMUUID(vm) == uuid {
 				return true, nil
 			}
 
@@ -341,24 +320,6 @@ func (c *ProxmoxPool) FindVMByUUID(ctx context.Context, uuid string) (vmID int, 
 	}
 
 	return 0, "", ErrInstanceNotFound
-}
-
-// GetVMUUID returns the VM UUID.
-func (c *ProxmoxPool) GetVMUUID(vm *proxmox.VirtualMachine) string {
-	smbios1 := goproxmox.VMSMBIOS{}
-	smbios1.UnmarshalString(vm.VirtualMachineConfig.SMBios1) //nolint:errcheck
-
-	return smbios1.UUID
-}
-
-// GetVMSKU returns the VM instance type name.
-func (c *ProxmoxPool) GetVMSKU(vm *proxmox.VirtualMachine) string {
-	smbios1 := goproxmox.VMSMBIOS{}
-	smbios1.UnmarshalString(vm.VirtualMachineConfig.SMBios1) //nolint:errcheck
-
-	sku, _ := base64.StdEncoding.DecodeString(smbios1.SKU) //nolint:errcheck
-
-	return string(sku)
 }
 
 func readValueFromFile(path string) (string, error) {
