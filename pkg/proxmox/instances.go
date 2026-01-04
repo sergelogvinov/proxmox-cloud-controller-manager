@@ -171,7 +171,7 @@ func (i *instances) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, 
 
 	mc := metrics.NewMetricContext("getVmState")
 
-	vm, err := px.GetVMStatus(ctx, vmID)
+	vm, err := px.GetVMByID(ctx, uint64(vmID))
 	if mc.ObserveRequest(err) != nil {
 		return false, err
 	}
