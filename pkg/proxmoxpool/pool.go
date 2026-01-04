@@ -171,7 +171,7 @@ func (c *ProxmoxPool) GetVMByIDInRegion(ctx context.Context, region string, vmid
 		return nil, err
 	}
 
-	vm, err := px.FindVMByID(ctx, uint64(vmid)) //nolint: unconvert
+	vm, err := px.GetVMByID(ctx, uint64(vmid)) //nolint: unconvert
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +229,7 @@ func (c *ProxmoxPool) FindVMByNode(ctx context.Context, node *v1.Node) (vmID int
 	var errs error
 
 	for region, px := range c.clients {
-		vmid, err := px.FindVMByFilter(ctx, func(rs *proxmox.ClusterResource) (bool, error) {
+		vm, err := px.GetVMByFilter(ctx, func(rs *proxmox.ClusterResource) (bool, error) {
 			if rs.Type != "qemu" {
 				return false, nil
 			}
@@ -263,11 +263,11 @@ func (c *ProxmoxPool) FindVMByNode(ctx context.Context, node *v1.Node) (vmID int
 			return 0, "", err
 		}
 
-		if vmid == 0 {
+		if vm.VMID == 0 {
 			continue
 		}
 
-		return vmid, region, nil
+		return int(vm.VMID), region, nil
 	}
 
 	if errs != nil {
@@ -282,7 +282,7 @@ func (c *ProxmoxPool) FindVMByUUID(ctx context.Context, uuid string) (vmID int, 
 	var errs error
 
 	for region, px := range c.clients {
-		vmid, err := px.FindVMByFilter(ctx, func(rs *proxmox.ClusterResource) (bool, error) {
+		vm, err := px.GetVMByFilter(ctx, func(rs *proxmox.ClusterResource) (bool, error) {
 			if rs.Type != "qemu" {
 				return false, nil
 			}
@@ -312,7 +312,7 @@ func (c *ProxmoxPool) FindVMByUUID(ctx context.Context, uuid string) (vmID int, 
 			return 0, "", err
 		}
 
-		return vmid, region, nil
+		return int(vm.VMID), region, nil
 	}
 
 	if errs != nil {

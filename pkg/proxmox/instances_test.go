@@ -82,7 +82,7 @@ func (ts *configuredTestSuite) SetupTest() {
 
 	client := &client{
 		pxpool:  px,
-		kclient: fake.NewSimpleClientset(),
+		kclient: fake.NewClientset(),
 	}
 
 	features := providerconfig.ClustersFeatures{
