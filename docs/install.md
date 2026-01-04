@@ -48,11 +48,52 @@ Official [documentation](https://pve.proxmox.com/wiki/User_Management)
 
 ```shell
 # Create role CCM
-pveum role add CCM -privs "VM.Audit Sys.Audit"
+pveum role add CCM -privs "VM.Audit VM.GuestAgent.Audit Sys.Audit"
 # Create user and grant permissions
 pveum user add kubernetes@pve
 pveum aclmod / -user kubernetes@pve -role CCM
 pveum user token add kubernetes@pve ccm -privsep 0
+```
+
+Or through terraform:
+
+```hcl
+# Plugin: bpg/proxmox
+
+resource "proxmox_virtual_environment_role" "ccm" {
+  role_id = "CCM"
+
+  privileges = [
+    "Sys.Audit",
+    "VM.Audit",
+    "VM.GuestAgent.Audit",
+  ]
+}
+
+resource "proxmox_virtual_environment_user" "kubernetes" {
+  acl {
+    path      = "/"
+    propagate = true
+    role_id   = proxmox_virtual_environment_role.ccm.role_id
+  }
+
+  comment = "Kubernetes"
+  user_id = "kubernetes@pve"
+}
+
+resource "proxmox_virtual_environment_user_token" "ccm" {
+  comment    = "Kubernetes CCM"
+  token_name = "ccm"
+  user_id    = proxmox_virtual_environment_user.kubernetes.user_id
+}
+
+resource "proxmox_virtual_environment_acl" "ccm" {
+  token_id = proxmox_virtual_environment_user_token.ccm.id
+  role_id  = proxmox_virtual_environment_role.ccm.role_id
+
+  path      = "/"
+  propagate = true
+}
 ```
 
 ## Deploy CCM
