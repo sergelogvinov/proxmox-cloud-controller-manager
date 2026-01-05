@@ -75,6 +75,11 @@ type ClustersFeatures struct {
 	Provider Provider `yaml:"provider,omitempty"`
 	// Network specifies the network options for the cloud provider.
 	Network NetworkOpts `yaml:"network,omitempty"`
+	// ForceUpdateLabels specifies if the provider should force update topology labels
+	// topology.kubernetes.io/region and topology.kubernetes.io/zone on nodes when
+	// a VM is migrated to a different zone within the Proxmox cluster.
+	// Default is false.
+	ForceUpdateLabels bool `yaml:"force_update_labels,omitempty"`
 }
 
 // ClustersConfig is proxmox multi-cluster cloud config.

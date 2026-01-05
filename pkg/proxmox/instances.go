@@ -59,6 +59,7 @@ type instances struct {
 	zoneAsHAGroup bool
 	provider      providerconfig.Provider
 	networkOpts   instanceNetops
+	updateLabels  bool
 }
 
 var instanceTypeNameRegexp = regexp.MustCompile(`(^[a-zA-Z0-9_.-]+)$`)
@@ -91,6 +92,7 @@ func newInstances(client *client, features providerconfig.ClustersFeatures) *ins
 		zoneAsHAGroup: features.HAGroup,
 		provider:      features.Provider,
 		networkOpts:   netOps,
+		updateLabels:  features.ForceUpdateLabels,
 	}
 }
 
@@ -270,6 +272,13 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 	}
 
 	if !hasUninitializedTaint(node) {
+		if i.updateLabels {
+			labels[v1.LabelTopologyZone] = metadata.Zone
+			labels[v1.LabelFailureDomainBetaZone] = metadata.Zone
+			labels[v1.LabelTopologyRegion] = metadata.Region
+			labels[v1.LabelFailureDomainBetaRegion] = metadata.Region
+		}
+
 		if len(labels) > 0 {
 			if err := syncNodeLabels(i.c, node, labels); err != nil {
 				klog.ErrorS(err, "error updating labels for the node", "node", klog.KRef("", node.Name))
