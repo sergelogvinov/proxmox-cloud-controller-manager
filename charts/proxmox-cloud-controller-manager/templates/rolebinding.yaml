@@ -8,7 +8,7 @@ roleRef:
   name: system:{{ include "proxmox-cloud-controller-manager.fullname" . }}
 subjects:
 - kind: ServiceAccount
-  name: {{ include "proxmox-cloud-controller-manager.fullname" . }}
+  name: {{ include "proxmox-cloud-controller-manager.serviceAccountName" .  }}
   namespace: {{ .Release.Namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -22,5 +22,5 @@ roleRef:
   name: extension-apiserver-authentication-reader
 subjects:
   - kind: ServiceAccount
-    name: {{ include "proxmox-cloud-controller-manager.fullname" . }}
+    name: {{ include "proxmox-cloud-controller-manager.serviceAccountName" .  }}
     namespace: {{ .Release.Namespace }}
