@@ -98,6 +98,12 @@ conformance: ## Conformance
 
 ############
 
+.PHONY: labels
+labels:
+	@kubectl get nodes -o json | jq '.items[].metadata.labels'
+
+############
+
 .PHONY: helm-unit
 helm-unit: ## Helm Unit Tests
 	@helm lint charts/proxmox-cloud-controller-manager
