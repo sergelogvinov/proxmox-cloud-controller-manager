@@ -1,4 +1,16 @@
 <a name="v0.11.0"></a>
+## [0.13.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.12.3...v0.13.0) (2026-01-05)
+
+
+### Features
+
+* force label update ([704aacc](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/704aacce5a776257201bb1037e909339062b2151))
+
+
+### Bug Fixes
+
+* **chart:** role binding ([ba7a611](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/ba7a61181add80a838e3d010feab06a304ef98f9))
+
 ## [0.12.3](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.12.2...v0.12.3) (2026-01-03)
 
 
