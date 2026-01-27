@@ -71,8 +71,12 @@ spec:
           {{- with .Values.extraArgs }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.extraEnvs }}
           env:
+            - name: SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+          {{- with .Values.extraEnvs }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
           ports:
