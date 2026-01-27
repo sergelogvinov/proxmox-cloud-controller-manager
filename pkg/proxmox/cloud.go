@@ -20,6 +20,7 @@ package proxmox
 import (
 	"context"
 	"io"
+	"os"
 
 	ccmConfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
@@ -36,6 +37,8 @@ const (
 
 	// ServiceAccountName is the service account name used in kube-system namespace.
 	ServiceAccountName = provider.ProviderName + "-cloud-controller-manager"
+	// ServiceAccountNameEnv is the environment variable for the service account name.
+	ServiceAccountNameEnv = "SERVICE_ACCOUNT"
 
 	// Group name
 	Group = "proxmox.sinextra.dev"
@@ -96,7 +99,12 @@ func newCloud(config *ccmConfig.ClustersConfig) (cloudprovider.Interface, error)
 // to perform housekeeping or run custom controllers specific to the cloud provider.
 // Any tasks started here should be cleaned up when the stop channel closes.
 func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, stop <-chan struct{}) {
-	c.client.kclient = clientBuilder.ClientOrDie(ServiceAccountName)
+	serviceAccountName := os.Getenv(ServiceAccountNameEnv)
+	if serviceAccountName == "" {
+		serviceAccountName = ServiceAccountName
+	}
+
+	c.client.kclient = clientBuilder.ClientOrDie(serviceAccountName)
 
 	klog.InfoS("clientset initialized")
 
