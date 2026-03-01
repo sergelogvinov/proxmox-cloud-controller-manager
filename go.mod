@@ -7,7 +7,7 @@ go 1.25.6
 
 require (
 	github.com/jarcoal/httpmock v1.4.1
-	github.com/luthermonson/go-proxmox v0.3.2
+	github.com/luthermonson/go-proxmox v0.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/samber/lo v1.52.0
 	github.com/sergelogvinov/go-proxmox v0.1.0
