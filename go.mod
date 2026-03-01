@@ -15,11 +15,11 @@ require (
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/multierr v1.11.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.35.0
-	k8s.io/apimachinery v0.35.0
-	k8s.io/client-go v0.35.0
-	k8s.io/cloud-provider v0.35.0
-	k8s.io/component-base v0.35.0
+	k8s.io/api v0.35.2
+	k8s.io/apimachinery v0.35.2
+	k8s.io/client-go v0.35.2
+	k8s.io/cloud-provider v0.35.2
+	k8s.io/component-base v0.35.2
 	k8s.io/klog/v2 v2.130.1
 )
 
@@ -110,10 +110,10 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
-	k8s.io/apiserver v0.35.0 // indirect
-	k8s.io/component-helpers v0.35.0 // indirect
-	k8s.io/controller-manager v0.35.0 // indirect
-	k8s.io/kms v0.35.0 // indirect
+	k8s.io/apiserver v0.35.2 // indirect
+	k8s.io/component-helpers v0.35.2 // indirect
+	k8s.io/controller-manager v0.35.2 // indirect
+	k8s.io/kms v0.35.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20251125145642-4e65d59e963e // indirect
 	k8s.io/utils v0.0.0-20260108192941-914a6e750570 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.34.0 // indirect
