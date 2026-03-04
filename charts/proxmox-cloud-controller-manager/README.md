@@ -1,6 +1,6 @@
 # proxmox-cloud-controller-manager
 
-![Version: 0.2.23](https://img.shields.io/badge/Version-0.2.23-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.12.3](https://img.shields.io/badge/AppVersion-v0.12.3-informational?style=flat-square)
+![Version: 0.2.26](https://img.shields.io/badge/Version-0.2.26-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.12.3](https://img.shields.io/badge/AppVersion-v0.12.3-informational?style=flat-square)
 
 Cloud Controller Manager plugin for Proxmox
 
@@ -136,8 +136,8 @@ helm upgrade -i --namespace=kube-system -f proxmox-ccm.yaml \
 | imagePullSecrets | list | `[]` |  |
 | nameOverride | string | `""` |  |
 | fullnameOverride | string | `""` |  |
-| extraEnvs | list | `[]` | Any extra environments for talos-cloud-controller-manager |
-| extraArgs | list | `[]` | Any extra arguments for talos-cloud-controller-manager |
+| extraEnvs | list | `[]` | Any extra environments for proxmox-cloud-controller-manager |
+| extraArgs | list | `[]` | Any extra arguments for proxmox-cloud-controller-manager |
 | enabledControllers | list | `["cloud-node","cloud-node-lifecycle"]` | List of controllers should be enabled. Use '*' to enable all controllers. Support only `cloud-node,cloud-node-lifecycle` controllers. |
 | logVerbosityLevel | int | `2` | Log verbosity level. See https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md for description of individual verbosity levels. |
 | existingConfigSecret | string | `nil` | Proxmox cluster config stored in secrets. |
