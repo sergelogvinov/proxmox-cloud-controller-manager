@@ -5,7 +5,7 @@ kind: ServiceAccount
 metadata:
   name: proxmox-cloud-controller-manager
   labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.2.23
+    helm.sh/chart: proxmox-cloud-controller-manager-0.2.26
     app.kubernetes.io/name: proxmox-cloud-controller-manager
     app.kubernetes.io/instance: proxmox-cloud-controller-manager
     app.kubernetes.io/version: "v0.12.3"
@@ -18,7 +18,7 @@ kind: ClusterRole
 metadata:
   name: system:proxmox-cloud-controller-manager
   labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.2.23
+    helm.sh/chart: proxmox-cloud-controller-manager-0.2.26
     app.kubernetes.io/name: proxmox-cloud-controller-manager
     app.kubernetes.io/instance: proxmox-cloud-controller-manager
     app.kubernetes.io/version: "v0.12.3"
@@ -106,7 +106,7 @@ kind: DaemonSet
 metadata:
   name: proxmox-cloud-controller-manager
   labels:
-    helm.sh/chart: proxmox-cloud-controller-manager-0.2.23
+    helm.sh/chart: proxmox-cloud-controller-manager-0.2.26
     app.kubernetes.io/name: proxmox-cloud-controller-manager
     app.kubernetes.io/instance: proxmox-cloud-controller-manager
     app.kubernetes.io/version: "v0.12.3"
@@ -115,6 +115,8 @@ metadata:
 spec:
   updateStrategy:
     type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: proxmox-cloud-controller-manager
@@ -138,8 +140,6 @@ spec:
         runAsUser: 10258
       dnsPolicy: ClusterFirstWithHostNet
       hostNetwork: true
-      initContainers:
-        []
       containers:
         - name: proxmox-cloud-controller-manager
           securityContext:
@@ -149,7 +149,7 @@ spec:
               - ALL
             seccompProfile:
               type: RuntimeDefault
-          image: "ghcr.io/sergelogvinov/proxmox-cloud-controller-manager:v0.12.3"
+          image: "ghcr.io/sergelogvinov/proxmox-cloud-controller-manager:v0.13.0"
           imagePullPolicy: IfNotPresent
           args:
             - --v=2
@@ -160,6 +160,11 @@ spec:
             - --use-service-account-credentials
             - --secure-port=10258
             - --authorization-always-allow-paths=/healthz,/livez,/readyz,/metrics
+          env:
+            - name: SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
           ports:
             - name: metrics
               containerPort: 10258

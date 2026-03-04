@@ -16,13 +16,13 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-# -- Any extra environments for talos-cloud-controller-manager
+# -- Any extra environments for proxmox-cloud-controller-manager
 extraEnvs:
   []
   # - name: KUBERNETES_SERVICE_HOST
   #   value: 127.0.0.1
 
-# -- Any extra arguments for talos-cloud-controller-manager
+# -- Any extra arguments for proxmox-cloud-controller-manager
 extraArgs:
   []
   # - --cluster-name=kubernetes
