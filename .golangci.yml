@@ -60,6 +60,14 @@ linters:
     - intrange
     - noinlineerr
   settings:
+    revive:
+      enable-default-rules: true
+      rules:
+        - name: var-naming
+          arguments:
+           - []
+           - []
+           - - skip-package-name-collision-with-go-std: true
     importas:
       alias:
         - pkg: github.com/sergelogvinov/proxmox-cloud-controller/manager/metrics
