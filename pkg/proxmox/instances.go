@@ -369,7 +369,7 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 		Zone:   vm.Node,
 	}
 
-	if info.UUID != node.Status.NodeInfo.SystemUUID {
+	if !strings.EqualFold(info.UUID, node.Status.NodeInfo.SystemUUID) {
 		klog.Errorf("instances.getInstanceInfo() node %s does not match SystemUUID=%s", info.Name, node.Status.NodeInfo.SystemUUID)
 
 		return nil, cloudprovider.InstanceNotFound
