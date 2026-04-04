@@ -1,4 +1,12 @@
 <a name="v0.11.0"></a>
+## [0.13.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.13.0...v0.13.1) (2026-04-04)
+
+
+### Bug Fixes
+
+* case-insensitivity uuid ([d3c0f38](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/d3c0f3890ba5cec0f6ec255fba6a2973a0689a7b))
+* deployment templating and values comments ([5e17bea](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/5e17beaf664aea42e7df9521581385e669b30524))
+
 ## [0.13.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.12.3...v0.13.0) (2026-01-27)
 
 
