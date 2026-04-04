@@ -249,7 +249,7 @@ func (c *ProxmoxPool) FindVMByNode(ctx context.Context, node *v1.Node) (vmID int
 				return false, err
 			}
 
-			if goproxmox.GetVMUUID(vm) == node.Status.NodeInfo.SystemUUID {
+			if strings.EqualFold(goproxmox.GetVMUUID(vm), node.Status.NodeInfo.SystemUUID) {
 				return true, nil
 			}
 
@@ -298,7 +298,7 @@ func (c *ProxmoxPool) FindVMByUUID(ctx context.Context, uuid string) (vmID int, 
 				return false, err
 			}
 
-			if goproxmox.GetVMUUID(vm) == uuid {
+			if strings.EqualFold(goproxmox.GetVMUUID(vm), uuid) {
 				return true, nil
 			}
 
