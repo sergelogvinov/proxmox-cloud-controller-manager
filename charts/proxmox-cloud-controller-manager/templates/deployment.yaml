@@ -53,8 +53,10 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if .Values.useDaemonSet }}
-      dnsPolicy: ClusterFirstWithHostNet
+      dnsPolicy: {{ default "ClusterFirstWithHostNet" .Values.dnsPolicy }}
       hostNetwork: true
+      {{- else if .Values.dnsPolicy }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
       {{- end }}
       {{- with .Values.hostAliases }}
       hostAliases:

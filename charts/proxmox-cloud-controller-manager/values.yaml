@@ -146,6 +146,11 @@ resources:
 # It allows to use CCM without CNI plugins.
 useDaemonSet: false
 
+# -- Specifies the DNS policy for the controller
+# Default is ClusterFirstWithHostNet for DaemonSet mode, and ClusterFirst for Deployment mode.
+# ref: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+dnsPolicy: ""
+
 # -- Deployment update strategy type.
 # ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment
 updateStrategy:
