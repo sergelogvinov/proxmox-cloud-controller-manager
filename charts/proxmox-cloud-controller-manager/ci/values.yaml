@@ -13,6 +13,9 @@ affinity:
 
 logVerbosityLevel: 4
 
+# useDaemonSet: true
+# dnsPolicy: ClusterFirstWithHostNet
+
 extraEnvs:
   - name: KUBERNETES_SERVICE_HOST
     value: 127.0.0.1
