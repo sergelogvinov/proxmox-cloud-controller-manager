@@ -1,4 +1,11 @@
 <a name="v0.11.0"></a>
+## [0.14.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.13.1...v0.14.0) (2026-05-02)
+
+
+### Features
+
+* **chart:** allow customizing DNS policy ([c7815d3](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/c7815d34beb317712f70c607dab88edc8b3e1fb7))
+
 ## [0.13.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.13.0...v0.13.1) (2026-04-04)
 
 
