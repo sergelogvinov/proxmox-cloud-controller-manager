@@ -260,8 +260,7 @@ func removeFromNodeAddresses(addresses *[]v1.NodeAddress, removeAddresses ...v1.
 	var indexesToRemove []int
 
 	for _, remove := range removeAddresses {
-		for i := len(*addresses) - 1; i >= 0; i-- {
-			existing := (*addresses)[i]
+		for i, existing := range slices.Backward(*addresses) {
 			if existing.Address == remove.Address && (existing.Type == remove.Type || remove.Type == "") {
 				indexesToRemove = append(indexesToRemove, i)
 			}

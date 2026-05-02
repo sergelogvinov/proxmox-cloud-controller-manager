@@ -17,6 +17,8 @@ output:
       colors: false
 linters:
   default: all
+  enable:
+    - gomodguard_v2
   disable:
     - depguard
     - errorlint
@@ -54,20 +56,22 @@ linters:
     - varnamelen
     - wrapcheck
     - wsl
+    - gomodguard
 
     # temporarily disabled linters
     - copyloopvar
     - intrange
     - noinlineerr
+    - goconst
   settings:
     revive:
       enable-default-rules: true
       rules:
         - name: var-naming
           arguments:
-           - []
-           - []
-           - - skip-package-name-collision-with-go-std: true
+            - []
+            - []
+            - - skip-package-name-collision-with-go-std: true
     importas:
       alias:
         - pkg: github.com/sergelogvinov/proxmox-cloud-controller/manager/metrics
@@ -135,6 +139,12 @@ linters:
         ]
     unused:
       local-variables-are-used: false
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - dupl
+          - goconst
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
