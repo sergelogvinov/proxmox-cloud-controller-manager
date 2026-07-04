@@ -1,5 +1,4 @@
 ---
-
 # See https://docs.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates
 
 version: 2
@@ -15,6 +14,17 @@ updates:
       day: "monday"
       time: "08:00"
       timezone: "UTC"
+    groups:
+      actions:
+        patterns:
+          - "actions/*"
+          - "azure/*"
+      docker:
+        patterns:
+          - "docker/*"
+      other:
+        patterns:
+          - "golangci/*"
 
   - package-ecosystem: "gomod"
     directory: "/"
