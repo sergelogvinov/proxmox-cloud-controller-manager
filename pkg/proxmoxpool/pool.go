@@ -200,7 +200,26 @@ func (c *ProxmoxPool) GetNodeHAGroups(ctx context.Context, region string, node s
 
 	haGroups, err := px.GetHAGroupList(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error get ha-groups %v", err)
+		// Proxmox VE 9 migrated HA groups to HA rules, the ha-groups endpoint
+		// fails there with "ha groups have been migrated to rules".
+		// Node affinity rules keep the same node list format as groups,
+		// so use them as HA groups.
+		haRules, rulesErr := px.GetHARuleList(ctx)
+		if rulesErr != nil {
+			return nil, fmt.Errorf("error get ha-groups %v", err)
+		}
+
+		for _, r := range haRules {
+			if r.Type != "node-affinity" || (r.Disable != nil && bool(*r.Disable)) {
+				continue
+			}
+
+			for n := range strings.SplitSeq(r.Nodes, ",") {
+				if node == strings.Split(n, ":")[0] {
+					groups = append(groups, r.Rule)
+				}
+			}
+		}
 	}
 
 	for _, g := range haGroups {
