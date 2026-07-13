@@ -17,6 +17,9 @@ limitations under the License.
 package proxmoxpool_test
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -116,4 +119,70 @@ func TestCheckClusters(t *testing.T) {
 	err = pxClient.CheckClusters(t.Context())
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "failed to initialized proxmox client in region")
+}
+
+func TestGetNodeHAGroups(t *testing.T) {
+	pve8 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api2/json/cluster/ha/groups":
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintln(w, `{"data":[
+				{"group":"gpu-nodes","type":"group","nodes":"pve1:2,pve2"},
+				{"group":"storage-nodes","type":"group","nodes":"pve3"}
+			]}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer pve8.Close()
+
+	// Proxmox VE 9 migrated HA groups to HA rules
+	pve9 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api2/json/cluster/ha/groups":
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, `{"data":null,"message":"cannot index groups: ha groups have been migrated to rules"}`)
+		case "/api2/json/cluster/ha/rules":
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintln(w, `{"data":[
+				{"rule":"gpu-nodes","type":"node-affinity","nodes":"pve1:2,pve2","resources":"vm:100","strict":0},
+				{"rule":"disabled-rule","type":"node-affinity","nodes":"pve1","disable":1},
+				{"rule":"keep-apart","type":"resource-affinity","resources":"vm:100,vm:101"}
+			]}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer pve9.Close()
+
+	for _, tt := range []struct {
+		name string
+		url  string
+	}{
+		{name: "ha-groups", url: pve8.URL},
+		{name: "ha-rules", url: pve9.URL},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := []*pxpool.ProxmoxCluster{
+				{
+					URL:         tt.url + "/api2/json",
+					TokenID:     "user!token-id",
+					TokenSecret: "secret",
+					Region:      "cluster-1",
+				},
+			}
+
+			pxClient, err := pxpool.NewProxmoxPool(cfg)
+			assert.Nil(t, err)
+			assert.NotNil(t, pxClient)
+
+			groups, err := pxClient.GetNodeHAGroups(t.Context(), "cluster-1", "pve1")
+			assert.Nil(t, err)
+			assert.Equal(t, []string{"gpu-nodes"}, groups)
+
+			groups, err = pxClient.GetNodeHAGroups(t.Context(), "cluster-1", "pve5")
+			assert.Equal(t, pxpool.ErrHAGroupNotFound, err)
+			assert.Nil(t, groups)
+		})
+	}
 }
