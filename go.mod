@@ -6,7 +6,7 @@ go 1.26.4
 // replace github.com/luthermonson/go-proxmox => github.com/sergelogvinov/go-proxmox-luthermonson v0.0.0-20251223032417-72ddd47a4a37
 
 require (
-	github.com/jarcoal/httpmock v1.4.1
+	github.com/jarcoal/httpmock v1.4.2
 	github.com/luthermonson/go-proxmox v0.5.1
 	github.com/pkg/errors v0.9.1
 	github.com/samber/lo v1.53.0
