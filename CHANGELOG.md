@@ -1,4 +1,16 @@
 <a name="v0.11.0"></a>
+## [0.15.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.14.0...v0.15.0) (2026-08-06)
+
+
+### Features
+
+* add deps commit type ([6009631](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/600963192f3c8619d3858a27647802d3f476ea7d))
+
+
+### Dependencies
+
+* prepare release ([89cd9bb](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/89cd9bbe6ce0ea83d5833de6e5532b49690d9277))
+
 ## [0.14.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.13.1...v0.14.0) (2026-05-29)
 
 
