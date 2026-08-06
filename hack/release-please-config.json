@@ -25,6 +25,11 @@
                     "hidden": false
                 },
                 {
+                    "type": "deps",
+                    "section": "Dependencies",
+                    "hidden": false
+                },
+                {
                     "type": "*",
                     "section": "Changelog",
                     "hidden": false
