@@ -12,7 +12,7 @@ require (
 	github.com/samber/lo v1.53.0
 	github.com/sergelogvinov/go-proxmox v0.4.0
 	github.com/spf13/pflag v1.0.10
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.1
 	go.uber.org/multierr v1.11.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.36.3
