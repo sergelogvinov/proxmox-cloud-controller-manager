@@ -1,0 +1,24 @@
+{
+    "$schema": "https://context7.com/schema/context7.json",
+    "url": "https://context7.com/sergelogvinov/proxmox-cloud-controller-manager",
+    "projectTitle": "Kubernetes Cloud Controller Manager for Proxmox",
+    "description": "A Kubernetes cloud controller manager for Proxmox that initializes, labels, and cleans up nodes, supporting multi-cluster deployments across Proxmox environments",
+    "excludeFolders": [
+        "cmd",
+        "hack",
+        "pkg",
+        "docs/cosign.md",
+        "docs/metrics.md",
+        "docs/deploy"
+    ],
+    "excludeFiles": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "GEMINI.md",
+        "CONTRIBUTING.md",
+        "CODE_OF_CONDUCT.md",
+        "CHANGELOG.md",
+        "LICENSE",
+        "OWNERS"
+    ]
+}
