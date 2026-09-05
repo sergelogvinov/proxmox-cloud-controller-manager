@@ -23,7 +23,7 @@ import (
 	"k8s.io/component-base/metrics/legacyregistry"
 )
 
-// CSIMetrics contains the metrics for Talos API calls.
+// CSIMetrics contains the metrics for Proxmox API calls.
 type CSIMetrics struct {
 	Duration *metrics.HistogramVec
 	Errors   *metrics.CounterVec

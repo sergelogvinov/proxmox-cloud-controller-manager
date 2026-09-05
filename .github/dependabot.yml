@@ -14,6 +14,8 @@ updates:
       day: "monday"
       time: "08:00"
       timezone: "UTC"
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns:
@@ -37,6 +39,8 @@ updates:
       day: "monday"
       time: "07:00"
       timezone: "UTC"
+    cooldown:
+      default-days: 7
     groups:
       k8s.io:
         patterns:
@@ -60,3 +64,5 @@ updates:
       day: "monday"
       time: "07:00"
       timezone: "UTC"
+    cooldown:
+      default-days: 7
