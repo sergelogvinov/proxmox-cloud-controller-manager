@@ -8,6 +8,7 @@
         "pkg",
         "docs/cosign.md",
         "docs/metrics.md",
+        "docs/release.md",
         "docs/deploy"
     ],
     "excludeFiles": [
