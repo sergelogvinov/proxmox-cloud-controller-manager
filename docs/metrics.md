@@ -12,7 +12,7 @@ proxmox-cloud-controller-manager --authorization-always-allow-paths="/metrics" -
 
 ### Helm chart values
 
-The following values can be set in the Helm chart to expose the metrics of the Talos CCM.
+The following values can be set in the Helm chart to expose the metrics of the Proxmox CCM.
 
 ```yaml
 podAnnotations:

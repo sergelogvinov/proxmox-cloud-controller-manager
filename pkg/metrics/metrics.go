@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-// MetricContext indicates the context for Talos client metrics.
+// MetricContext indicates the context for Proxmox client metrics.
 type MetricContext struct {
 	start      time.Time
 	attributes []string
