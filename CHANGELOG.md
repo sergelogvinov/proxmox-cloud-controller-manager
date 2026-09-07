@@ -1,4 +1,17 @@
 <a name="v0.11.0"></a>
+## [0.16.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.15.0...v0.16.0) (2026-09-05)
+
+
+### Features
+
+* add context7 ([5a4d2df](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/5a4d2dfa8a0e2185ff1b77ee6ea004df9569f367))
+
+
+### Bug Fixes
+
+* context7 ([b3f5865](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/b3f5865ab2a4b12aac6f34fc81f7dca796ddda7b))
+* typo in faq ([ded3eb7](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/ded3eb7375562dc1f483bb68a12e36aa1b93853b))
+
 ## [0.15.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.14.0...v0.15.0) (2026-08-06)
 
 
