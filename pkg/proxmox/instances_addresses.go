@@ -25,8 +25,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/luthermonson/go-proxmox"
-
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu/agent"
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	metrics "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/metrics"
 
@@ -164,22 +163,17 @@ func (i *instances) processIP(_ context.Context, addresses *[]v1.NodeAddress, ad
 	})
 }
 
-func (i *instances) getInstanceNics(ctx context.Context, info *instanceInfo) ([]*proxmox.AgentNetworkIface, error) {
-	result := make([]*proxmox.AgentNetworkIface, 0)
+func (i *instances) getInstanceNics(ctx context.Context, info *instanceInfo) ([]agent.NetworkInterface, error) {
+	result := make([]agent.NetworkInterface, 0)
 
 	px, err := i.c.pxpool.GetProxmoxCluster(info.Region)
 	if err != nil {
 		return result, err
 	}
 
-	vm, err := px.GetVMConfig(ctx, info.ID)
-	if err != nil {
-		return nil, err
-	}
-
 	mc := metrics.NewMetricContext("getVmInfo")
 
-	nicset, err := vm.AgentGetNetworkIFaces(ctx)
+	nicset, err := px.Nodes(info.Node).Qemu().Agent().NetworkGetInterfaces(ctx, info.ID)
 	if mc.ObserveRequest(err) != nil {
 		return result, err
 	}

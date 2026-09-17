@@ -42,6 +42,18 @@ const (
 
 	// Group name
 	Group = "proxmox.sinextra.dev"
+
+	// AnnotationProxmoxInstanceID is the annotation used to store the Proxmox node virtual machine ID.
+	AnnotationProxmoxInstanceID = Group + "/instance-id"
+
+	// LabelTopologyRegion is the label used to store the Proxmox region name.
+	LabelTopologyRegion = "topology." + Group + "/region"
+
+	// LabelTopologyZone is the label used to store the Proxmox zone name.
+	LabelTopologyZone = "topology." + Group + "/zone"
+
+	// LabelTopologyHAGroupPrefix is the prefix for labels used to store Proxmox HA group information.
+	LabelTopologyHAGroupPrefix = "group.topology." + Group + "/"
 )
 
 type cloud struct {
