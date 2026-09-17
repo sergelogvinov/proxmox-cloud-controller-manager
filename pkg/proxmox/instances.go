@@ -25,7 +25,6 @@ import (
 	"strconv"
 	"strings"
 
-	goproxmox "github.com/sergelogvinov/go-proxmox"
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	metrics "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/metrics"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
@@ -164,17 +163,16 @@ func (i *instances) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, 
 		}
 	}
 
-	px, err := i.c.pxpool.GetProxmoxCluster(region)
-	if err != nil {
-		klog.ErrorS(err, "instances.InstanceShutdown() failed to get Proxmox cluster", "region", region)
-
-		return false, nil
-	}
-
 	mc := metrics.NewMetricContext("getVmState")
 
-	vm, err := px.GetVMByID(ctx, uint64(vmID))
+	vm, err := i.c.pxpool.GetVMResourceByID(ctx, region, vmID)
 	if mc.ObserveRequest(err) != nil {
+		if errors.Is(err, proxmoxpool.ErrRegionNotFound) {
+			klog.ErrorS(err, "instances.InstanceShutdown() failed to get Proxmox cluster", "region", region)
+
+			return false, nil
+		}
+
 		return false, err
 	}
 
@@ -340,21 +338,12 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 		}
 	}
 
-	px, err := i.c.pxpool.GetProxmoxCluster(region)
-	if err != nil {
-		return nil, err
-	}
-
 	mc := metrics.NewMetricContext("getVMConfig")
 
-	vm, err := px.GetVMConfig(ctx, vmID)
+	vm, err := i.c.pxpool.GetVMConfig(ctx, region, vmID)
 	if mc.ObserveRequest(err) != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, proxmoxpool.ErrInstanceNotFound) {
 			return nil, cloudprovider.InstanceNotFound
-		}
-
-		if errors.Is(err, goproxmox.ErrVirtualMachineUnreachable) {
-			return nil, proxmoxpool.ErrNodeInaccessible
 		}
 
 		return nil, err
@@ -362,7 +351,7 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 
 	info := &instanceInfo{
 		ID:     vmID,
-		UUID:   goproxmox.GetVMUUID(vm),
+		UUID:   vm.UUID,
 		Name:   vm.Name,
 		Node:   vm.Node,
 		Region: region,
@@ -381,9 +370,9 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 		return nil, cloudprovider.InstanceNotFound
 	}
 
-	info.Type = goproxmox.GetVMSKU(vm)
+	info.Type = vm.Type
 	if !instanceTypeNameRegexp.MatchString(info.Type) {
-		info.Type = fmt.Sprintf("%dVCPU-%dGB", vm.CPUs, vm.MaxMem/1024/1024/1024)
+		info.Type = fmt.Sprintf("%dVCPU-%dGB", int(vm.CPUs), vm.MaxMem/1024/1024/1024)
 	}
 
 	return info, nil
