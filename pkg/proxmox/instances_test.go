@@ -17,24 +17,90 @@ limitations under the License.
 package proxmox
 
 import (
+	"encoding/base64"
 	"fmt"
 	"testing"
 
-	"github.com/jarcoal/httpmock"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/suite"
 
-	goproxmox "github.com/sergelogvinov/go-proxmox"
+	"github.com/sergelogvinov/go-proxmox-rest/fakeapi"
+	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu"
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
-	testcluster "github.com/sergelogvinov/proxmox-cloud-controller-manager/test/cluster"
 
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	cloudprovider "k8s.io/cloud-provider"
 	cloudproviderapi "k8s.io/cloud-provider/api"
 )
+
+// ternary is a tiny stand-in for samber/lo.Ternary (not a dependency of
+// this module) used below to pick expected values that differ between the
+// default and capmox providers.
+func ternary[T any](cond bool, t, f T) T {
+	if cond {
+		return t
+	}
+
+	return f
+}
+
+// newFakeProxmoxClusters builds two independent fakeapi clusters modeling
+// the two regions ("cluster-1", "cluster-2") that test/config/cluster-config-*.yaml
+// describe, and returns their base URLs so a test can point a ProxmoxPool at
+// them in place of the (unreachable) URLs baked into those config files.
+//
+// cluster-1 has four Proxmox nodes (pve-1..pve-4); pve-4 is down (see
+// FailNode below) and its guest (VMID 104, k8s node cluster-1-node-4)
+// reports status "unknown", the same signal a real cluster reports for a
+// guest whose host is unreachable. cluster-2 has a single node (pve-3)
+// hosting a stopped guest (VMID 103, k8s node cluster-2-node-1).
+func newFakeProxmoxClusters(t *testing.T) (cluster1URL, cluster2URL string) {
+	t.Helper()
+
+	cluster1 := fakeapi.NewCluster(t,
+		fakeapi.WithNodes("pve-1", "pve-2", "pve-3", "pve-4"),
+		fakeapi.WithHAGroup("ha-group-1", "pve-2:1"),
+	)
+
+	cluster1.Node("pve-1").AddVM(100, &qemu.Config{
+		Name:    "cluster-1-node-1",
+		Cores:   new(4),
+		Memory:  &qemu.Memory{Current: new(10240)},
+		SMBios1: &qemu.SMBios1{UUID: "11833f4c-341f-4bd3-aad7-f7abed000000"},
+	}, fakeapi.WithStatus(qemu.VMStatusRunning))
+
+	cluster1.Node("pve-2").AddVM(101, &qemu.Config{
+		Name:    "cluster-1-node-2",
+		Cores:   new(2),
+		Memory:  &qemu.Memory{Current: new(5120)},
+		SMBios1: &qemu.SMBios1{UUID: "11833f4c-341f-4bd3-aad7-f7abed000001"},
+	}, fakeapi.WithStatus(qemu.VMStatusRunning))
+
+	// pve-4 is down: its guest is seeded directly with status "unknown"
+	// (fakeapi does not itself flip a failed node's guest resources to
+	// "unknown" - see Cluster.FailNode's doc comment) and the node is
+	// also failed so any direct request to it fails too.
+	cluster1.Node("pve-4").AddVM(104, &qemu.Config{
+		Name: "cluster-1-node-4",
+	}, fakeapi.WithStatus(qemu.VMStatus("unknown")))
+
+	cluster1.FailNode("pve-4", fakeapi.FailureUnreachable)
+
+	cluster2 := fakeapi.NewCluster(t, fakeapi.WithNodes("pve-3"))
+
+	cluster2.Node("pve-3").AddVM(103, &qemu.Config{
+		Name:   "cluster-2-node-1",
+		Cores:  new(1),
+		Memory: &qemu.Memory{Current: new(2048)},
+		SMBios1: &qemu.SMBios1{
+			UUID: "11833f4c-341f-4bd3-aad7-f7abea000000",
+			SKU:  base64.StdEncoding.EncodeToString([]byte("c1.medium")),
+		},
+	})
+
+	return cluster1.Client(t).ToRESTConfig().BaseURL, cluster2.Client(t).ToRESTConfig().BaseURL
+}
 
 type ccmTestSuite struct {
 	suite.Suite
@@ -68,11 +134,22 @@ type configuredTestSuite struct {
 }
 
 func (ts *configuredTestSuite) SetupTest() {
-	testcluster.SetupMockResponders()
+	cluster1URL, cluster2URL := newFakeProxmoxClusters(ts.T())
 
 	cfg, err := providerconfig.ReadCloudConfigFromFile(ts.configCase.config)
 	if err != nil {
 		ts.T().Fatalf("failed to read config: %v", err)
+	}
+
+	fakeURLs := map[string]string{
+		"cluster-1": cluster1URL,
+		"cluster-2": cluster2URL,
+	}
+
+	for _, c := range cfg.Clusters {
+		if u, ok := fakeURLs[c.Region]; ok {
+			c.URL = u
+		}
 	}
 
 	px, err := proxmoxpool.NewProxmoxPool(cfg.Clusters)
@@ -109,9 +186,6 @@ func TestSuiteCCM(t *testing.T) {
 
 // nolint:dupl
 func (ts *configuredTestSuite) TestInstanceExists() {
-	httpmock.Activate()
-	defer httpmock.DeactivateAndReset() //nolint: wsl_v5
-
 	tests := []struct {
 		msg           string
 		node          *v1.Node
@@ -119,11 +193,16 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 		expected      bool
 	}{
 		{
+			msg: "NodeEmptyProviderID",
+			node: &v1.Node{
+				Name: "test-node-1",
+			},
+			expected: true,
+		},
+		{
 			msg: "NodeForeignProviderID",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-node-1",
-				},
+				Name: "test-node-1",
 				Spec: v1.NodeSpec{
 					ProviderID: "foreign://provider-id",
 				},
@@ -133,9 +212,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 		{
 			msg: "NodeWrongCluster",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-3-node-1",
-				},
+				Name: "cluster-3-node-1",
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-3/100",
 				},
@@ -146,9 +223,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 		{
 			msg: "NodeNotExists",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-500",
-				},
+				Name: "cluster-1-node-500",
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-1/500",
 				},
@@ -158,11 +233,9 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 		{
 			msg: "NodeExists",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-1",
-				},
+				Name: "cluster-1-node-1",
 				Spec: v1.NodeSpec{
-					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
 						"proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
 						"proxmox://cluster-1/100",
 					),
@@ -178,11 +251,9 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 		{
 			msg: "NodeExistsWithDifferentName",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-3",
-				},
+				Name: "cluster-1-node-3",
 				Spec: v1.NodeSpec{
-					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
 						"proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
 						"proxmox://cluster-1/100",
 					),
@@ -198,11 +269,9 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 		{
 			msg: "NodeExistsWithDifferentUUID",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-1",
-				},
+				Name: "cluster-1-node-1",
 				Spec: v1.NodeSpec{
-					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
 						"proxmox://8af7110d-0000-0000-0000-9527d10a6583",
 						"proxmox://cluster-1/100",
 					),
@@ -213,14 +282,12 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 					},
 				},
 			},
-			expected: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox, true, false),
+			expected: ternary(ts.i.provider == providerconfig.ProviderCapmox, true, false),
 		},
 		{
 			msg: "NodeExistsWithDifferentNameAndUUID",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-3",
-				},
+				Name: "cluster-1-node-3",
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-1/100",
 				},
@@ -235,12 +302,10 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 		{
 			msg: "NodeExistsOfflinePVENode",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-4",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
-						AnnotationProxmoxInstanceID:                    "104",
-					},
+				Name: "cluster-1-node-4",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+					AnnotationProxmoxInstanceID:                    "104",
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -248,7 +313,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 					},
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
 						"proxmox://11833f4c-341f-4bd3-aad7-f7abea000002",
 						"proxmox://cluster-1/104"),
 				},
@@ -258,11 +323,9 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 		{
 			msg: "NodeExistsOfflinePVENodeUninitialized",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-4",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
-					},
+				Name: "cluster-1-node-4",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -284,14 +347,12 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 		{
 			msg: "NodeUUIDNotFoundCAPMox",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node-rqa-u7y",
-					Annotations: map[string]string{
-						AnnotationProxmoxInstanceID: "105",
-					},
-					Labels: map[string]string{
-						LabelTopologyRegion: "cluster-1",
-					},
+				Name: "node-rqa-u7y",
+				Annotations: map[string]string{
+					AnnotationProxmoxInstanceID: "105",
+				},
+				Labels: map[string]string{
+					LabelTopologyRegion: "cluster-1",
 				},
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://d290d7f2-b179-404c-b627-6e4dccb59066",
@@ -307,9 +368,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 		{
 			msg: "NodeUUIDFoundCAPMox",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-1",
-				},
+				Name: "cluster-1-node-1",
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
 				},
@@ -341,9 +400,6 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 
 // nolint:dupl
 func (ts *configuredTestSuite) TestInstanceShutdown() {
-	httpmock.Activate()
-	defer httpmock.DeactivateAndReset() //nolint: wsl_v5
-
 	tests := []struct {
 		msg           string
 		node          *v1.Node
@@ -351,11 +407,16 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 		expected      bool
 	}{
 		{
+			msg: "NodeEmptyProviderID",
+			node: &v1.Node{
+				Name: "test-node-1",
+			},
+			expected: false,
+		},
+		{
 			msg: "NodeForeignProviderID",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-node-1",
-				},
+				Name: "test-node-1",
 				Spec: v1.NodeSpec{
 					ProviderID: "foreign://provider-id",
 				},
@@ -365,9 +426,7 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 		{
 			msg: "NodeWrongCluster",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-3-node-1",
-				},
+				Name: "cluster-3-node-1",
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-3/100",
 				},
@@ -377,22 +436,18 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 		{
 			msg: "NodeNotExists",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-500",
-				},
+				Name: "cluster-1-node-500",
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-1/500",
 				},
 			},
 			expected:      false,
-			expectedError: goproxmox.ErrVirtualMachineNotFound.Error(),
+			expectedError: proxmoxpool.ErrInstanceNotFound.Error(),
 		},
 		{
 			msg: "NodeExists",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-1",
-				},
+				Name: "cluster-1-node-1",
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-1/100",
 				},
@@ -407,9 +462,7 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 		{
 			msg: "NodeExistsStopped",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-2-node-1",
-				},
+				Name: "cluster-2-node-1",
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-2/103",
 				},
@@ -419,9 +472,7 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 		{
 			msg: "NodeExistsWithDifferentName",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-3",
-				},
+				Name: "cluster-1-node-3",
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-1/100",
 				},
@@ -436,9 +487,7 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 		{
 			msg: "NodeExistsWithDifferentUUID",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-1",
-				},
+				Name: "cluster-1-node-1",
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-1/100",
 				},
@@ -453,9 +502,7 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 		{
 			msg: "NodeExistsWithDifferentNameAndUUID",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-3",
-				},
+				Name: "cluster-1-node-3",
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-1/100",
 				},
@@ -470,11 +517,9 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 		{
 			msg: "NodeExistsOfflinePVENode",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-4",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
-					},
+				Name: "cluster-1-node-4",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -482,7 +527,7 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 					},
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
 						"proxmox://11833f4c-341f-4bd3-aad7-f7abea000002",
 						"proxmox://cluster-1/104"),
 				},
@@ -492,11 +537,9 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 		{
 			msg: "NodeExistsOfflinePVENodeUninitialized",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-4",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
-					},
+				Name: "cluster-1-node-4",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -534,9 +577,6 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 }
 
 func (ts *configuredTestSuite) TestInstanceMetadata() {
-	httpmock.Activate()
-	defer httpmock.DeactivateAndReset() //nolint: wsl_v5
-
 	tests := []struct {
 		msg           string
 		node          *v1.Node
@@ -546,20 +586,16 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 		{
 			msg: "NodeUndefined",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-node-1",
-				},
+				Name: "test-node-1",
 			},
 			expected: &cloudprovider.InstanceMetadata{},
 		},
 		{
 			msg: "NodeForeignProviderID",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-node-1",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
-					},
+				Name: "test-node-1",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
 				},
 				Spec: v1.NodeSpec{
 					ProviderID: "foreign://provider-id",
@@ -570,15 +606,13 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 		{
 			msg: "NodeForeignProviderIDWithAnnotationAndLabel",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-1",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
-						AnnotationProxmoxInstanceID:                    "100",
-					},
-					Labels: map[string]string{
-						LabelTopologyRegion: "cluster-1",
-					},
+				Name: "cluster-1-node-1",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+					AnnotationProxmoxInstanceID:                    "100",
+				},
+				Labels: map[string]string{
+					LabelTopologyRegion: "cluster-1",
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -594,11 +628,9 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 		{
 			msg: "NodeWrongCluster",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-3-node-1",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
-					},
+				Name: "cluster-3-node-1",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
 				},
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-3/100",
@@ -610,11 +642,9 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 		{
 			msg: "NodeNotExists",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-500",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
-					},
+				Name: "cluster-1-node-500",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
 				},
 				Spec: v1.NodeSpec{
 					ProviderID: "proxmox://cluster-1/500",
@@ -625,11 +655,9 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 		{
 			msg: "NodeExists",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-1",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
-					},
+				Name: "cluster-1-node-1",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -647,7 +675,7 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+				ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
 					"proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
 					"proxmox://cluster-1/100",
 				),
@@ -665,20 +693,17 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				Region:       "cluster-1",
 				Zone:         "pve-1",
 				AdditionalLabels: map[string]string{
-					"group.topology.proxmox.sinextra.dev/rnd": "",
-					"topology.proxmox.sinextra.dev/region":    "cluster-1",
-					"topology.proxmox.sinextra.dev/zone":      "pve-1",
+					"topology.proxmox.sinextra.dev/region": "cluster-1",
+					"topology.proxmox.sinextra.dev/zone":   "pve-1",
 				},
 			},
 		},
 		{
 			msg: "NodeExistsDualstack",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-1",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4,2001::1",
-					},
+				Name: "cluster-1-node-1",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4,2001::1",
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -696,7 +721,7 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+				ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
 					"proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
 					"proxmox://cluster-1/100",
 				),
@@ -718,21 +743,65 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				Region:       "cluster-1",
 				Zone:         "pve-1",
 				AdditionalLabels: map[string]string{
-					"group.topology.proxmox.sinextra.dev/rnd": "",
-					"topology.proxmox.sinextra.dev/region":    "cluster-1",
-					"topology.proxmox.sinextra.dev/zone":      "pve-1",
+					"topology.proxmox.sinextra.dev/region": "cluster-1",
+					"topology.proxmox.sinextra.dev/zone":   "pve-1",
+				},
+			},
+		},
+		{
+			msg: "NodeExistsWithHAGroup",
+			node: &v1.Node{
+				Name: "cluster-1-node-2",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abed000001",
+					},
+				},
+				Spec: v1.NodeSpec{
+					Taints: []v1.Taint{
+						{
+							Key:    cloudproviderapi.TaintExternalCloudProvider,
+							Value:  "true",
+							Effect: v1.TaintEffectNoSchedule,
+						},
+					},
+				},
+			},
+			expected: &cloudprovider.InstanceMetadata{
+				ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					"proxmox://11833f4c-341f-4bd3-aad7-f7abed000001",
+					"proxmox://cluster-1/101",
+				),
+				NodeAddresses: []v1.NodeAddress{
+					{
+						Type:    v1.NodeHostName,
+						Address: "cluster-1-node-2",
+					},
+					{
+						Type:    v1.NodeInternalIP,
+						Address: "1.2.3.4",
+					},
+				},
+				InstanceType: "2VCPU-5GB",
+				Region:       "cluster-1",
+				Zone:         "pve-2",
+				AdditionalLabels: map[string]string{
+					"topology.proxmox.sinextra.dev/region":           "cluster-1",
+					"topology.proxmox.sinextra.dev/zone":             "pve-2",
+					"group.topology.proxmox.sinextra.dev/ha-group-1": "",
 				},
 			},
 		},
 		{
 			msg: "NodeExistsOfflinePVENode",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-4",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
-						AnnotationProxmoxInstanceID:                    "104",
-					},
+				Name: "cluster-1-node-4",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+					AnnotationProxmoxInstanceID:                    "104",
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -740,7 +809,7 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 					},
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
 						"proxmox://11833f4c-341f-4bd3-aad7-f7abea000002",
 						"proxmox://cluster-1/104"),
 				},
@@ -750,11 +819,9 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 		{
 			msg: "NodeExistsOfflinePVENodeUninitialized",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-1-node-4",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
-					},
+				Name: "cluster-1-node-4",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -776,11 +843,9 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 		{
 			msg: "NodeExistsCluster2",
 			node: &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "cluster-2-node-1",
-					Annotations: map[string]string{
-						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
-					},
+				Name: "cluster-2-node-1",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
 				},
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
@@ -798,7 +863,7 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: lo.Ternary(ts.i.provider == providerconfig.ProviderCapmox,
+				ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
 					"proxmox://11833f4c-341f-4bd3-aad7-f7abea000000",
 					"proxmox://cluster-2/103",
 				),
