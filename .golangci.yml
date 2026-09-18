@@ -63,6 +63,7 @@ linters:
     - intrange
     - noinlineerr
     - goconst
+    - exhaustruct_v5
   settings:
     revive:
       enable-default-rules: true
@@ -145,6 +146,7 @@ linters:
         linters:
           - dupl
           - goconst
+          - exhaustruct_v5
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0

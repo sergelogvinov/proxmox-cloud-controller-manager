@@ -18,5 +18,5 @@ package proxmox
 
 import "github.com/pkg/errors"
 
-// ErrKubeletExternalProvider is returned when a kubelet node does not have --cloud-provider=external argument
-var ErrKubeletExternalProvider = errors.New("node does not have --cloud-provider=external argument")
+// ErrKubeletExternalProvider is returned when a kubelet does not have --cloud-provider=external argument
+var ErrKubeletExternalProvider = errors.New("kubelet does not have --cloud-provider=external argument")
