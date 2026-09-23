@@ -22,9 +22,9 @@ import (
 	"io"
 	"os"
 
+	pxpool "github.com/sergelogvinov/go-proxmox-pool"
 	ccmConfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
-	pxpool "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 
 	clientkubernetes "k8s.io/client-go/kubernetes"
 	cloudprovider "k8s.io/cloud-provider"
@@ -107,6 +107,20 @@ func newCloud(config *ccmConfig.ClustersConfig) (cloudprovider.Interface, error)
 	}, nil
 }
 
+// checkClusters probes every configured cluster's connectivity and
+// permissions, returning the first error encountered. go-proxmox-pool has
+// no pool-level check; each cluster is checked individually via its
+// Cluster handle.
+func checkClusters(ctx context.Context, pool *pxpool.ProxmoxPool) error {
+	for _, name := range pool.List() {
+		if err := pool.Cluster(name).Check(ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Initialize provides the cloud with a kubernetes client builder and may spawn goroutines
 // to perform housekeeping or run custom controllers specific to the cloud provider.
 // Any tasks started here should be cleaned up when the stop channel closes.
@@ -120,8 +134,7 @@ func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, 
 
 	klog.InfoS("clientset initialized")
 
-	err := c.client.pxpool.CheckClusters(c.ctx)
-	if err != nil {
+	if err := checkClusters(c.ctx, c.client.pxpool); err != nil {
 		klog.ErrorS(err, "failed to check proxmox cluster")
 	}
 

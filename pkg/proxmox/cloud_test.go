@@ -22,9 +22,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	proxmoxpool "github.com/sergelogvinov/go-proxmox-pool"
 	ccmConfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
-	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 )
 
 func TestNewCloudError(t *testing.T) {

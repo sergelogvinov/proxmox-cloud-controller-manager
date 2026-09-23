@@ -23,10 +23,10 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	proxmoxpool "github.com/sergelogvinov/go-proxmox-pool"
 	"github.com/sergelogvinov/go-proxmox-rest/fakeapi"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu"
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
-	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -218,7 +218,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 				},
 			},
 			expected:      false,
-			expectedError: "region not found",
+			expectedError: "cluster not found",
 		},
 		{
 			msg: "NodeNotExists",
@@ -637,7 +637,7 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected:      &cloudprovider.InstanceMetadata{},
-			expectedError: "region not found",
+			expectedError: "cluster not found",
 		},
 		{
 			msg: "NodeNotExists",

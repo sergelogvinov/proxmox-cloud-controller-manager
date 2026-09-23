@@ -28,7 +28,7 @@ import (
 
 	yaml "gopkg.in/yaml.v3"
 
-	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
+	proxmoxpool "github.com/sergelogvinov/go-proxmox-pool"
 )
 
 // Provider specifies the provider. Can be 'default' or 'capmox'
@@ -84,8 +84,8 @@ type ClustersFeatures struct {
 
 // ClustersConfig is proxmox multi-cluster cloud config.
 type ClustersConfig struct {
-	Features ClustersFeatures              `yaml:"features,omitempty"`
-	Clusters []*proxmoxpool.ProxmoxCluster `yaml:"clusters,omitempty"`
+	Features ClustersFeatures             `yaml:"features,omitempty"`
+	Clusters []*proxmoxpool.ClusterConfig `yaml:"clusters,omitempty"`
 }
 
 // Errors for Reading Cloud Config

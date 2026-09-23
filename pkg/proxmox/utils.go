@@ -25,6 +25,11 @@ import (
 	"strings"
 	"unicode"
 
+	"go.uber.org/multierr"
+
+	proxmoxpool "github.com/sergelogvinov/go-proxmox-pool"
+	pxcluster "github.com/sergelogvinov/go-proxmox-rest/cluster"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -181,4 +186,88 @@ func syncNodeLabels(c *client, node *corev1.Node, nodeLabels map[string]string) 
 	}
 
 	return nil
+}
+
+// findVMByNode searches every configured cluster for a VM whose name is
+// prefixed by node.Name and whose SMBIOS UUID matches the node's reported
+// SystemUUID. Narrowing by name first keeps UUID resolution cheap:
+// proxmoxpool.WithUUID only issues a Config call against candidates that
+// already passed the name filter (or resolves instantly via the pool's
+// UUID index). A cluster whose guest is on an unreachable node is skipped
+// and accumulated into the returned error rather than aborting the search.
+//
+// +proxmox:rbac:feature=base
+func findVMByNode(ctx context.Context, pool *proxmoxpool.ProxmoxPool, node *corev1.Node) (vmID int, region string, err error) {
+	var errs error
+
+	for _, name := range pool.List() {
+		vms, err := pool.Cluster(name).List(ctx, proxmoxpool.ResourceKindVM,
+			proxmoxpool.SkipTemplates(),
+			proxmoxpool.WithMatch(func(rs *pxcluster.Resource) (bool, error) {
+				if !strings.HasPrefix(rs.Name, node.Name) {
+					return false, nil
+				}
+
+				if rs.Status == "unknown" {
+					errs = multierr.Append(errs, fmt.Errorf("region %s node %s: %w", name, rs.Node, proxmoxpool.ErrNodeInaccessible))
+
+					return false, nil //nolint: nilerr
+				}
+
+				return true, nil
+			}),
+			proxmoxpool.WithUUID(node.Status.NodeInfo.SystemUUID),
+		)
+		if err != nil {
+			return 0, "", err
+		}
+
+		if len(vms) > 0 {
+			return vms[0].VMID, name, nil
+		}
+	}
+
+	if errs != nil {
+		return 0, "", errs
+	}
+
+	return 0, "", proxmoxpool.ErrInstanceNotFound
+}
+
+// findVMByUUID searches every configured cluster for a VM whose SMBIOS
+// UUID matches uuid. See findVMByNode for the unreachable-node error
+// accumulation behavior.
+//
+// +proxmox:rbac:feature=base
+func findVMByUUID(ctx context.Context, pool *proxmoxpool.ProxmoxPool, uuid string) (vmID int, region string, err error) {
+	var errs error
+
+	for _, name := range pool.List() {
+		vms, err := pool.Cluster(name).List(ctx, proxmoxpool.ResourceKindVM,
+			proxmoxpool.SkipTemplates(),
+			proxmoxpool.WithMatch(func(rs *pxcluster.Resource) (bool, error) {
+				if rs.Status == "unknown" {
+					errs = multierr.Append(errs, fmt.Errorf("region %s node %s: %w", name, rs.Node, proxmoxpool.ErrNodeInaccessible))
+
+					return false, nil //nolint: nilerr
+				}
+
+				return true, nil
+			}),
+			proxmoxpool.WithUUID(uuid),
+		)
+		if err != nil {
+			return 0, "", err
+		}
+
+		if len(vms) > 0 {
+			return vms[0].VMID, name, nil
+		}
+	}
+
+	if errs != nil {
+		return 0, "", errs
+	}
+
+	return 0, "", proxmoxpool.ErrInstanceNotFound
 }
