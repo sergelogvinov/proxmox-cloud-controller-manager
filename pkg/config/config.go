@@ -29,16 +29,8 @@ import (
 	yaml "gopkg.in/yaml.v3"
 
 	proxmoxpool "github.com/sergelogvinov/go-proxmox-pool"
+	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
 )
-
-// Provider specifies the provider. Can be 'default' or 'capmox'
-type Provider string
-
-// ProviderDefault is the default provider
-const ProviderDefault Provider = "default"
-
-// ProviderCapmox is the Provider for capmox
-const ProviderCapmox Provider = "capmox"
 
 // NetworkMode specifies the network mode.
 type NetworkMode string
@@ -72,7 +64,7 @@ type ClustersFeatures struct {
 	HAGroup bool `yaml:"ha_group,omitempty"`
 	// Provider specifies the provider to use. Can be 'default' or 'capmox'.
 	// Default is 'default'.
-	Provider Provider `yaml:"provider,omitempty"`
+	Provider provider.IDType `yaml:"provider,omitempty"`
 	// Network specifies the network options for the cloud provider.
 	Network NetworkOpts `yaml:"network,omitempty"`
 	// ForceUpdateLabels specifies if the provider should force update topology labels
@@ -131,7 +123,7 @@ func ReadCloudConfig(config io.Reader) (ClustersConfig, error) {
 	}
 
 	if cfg.Features.Provider == "" {
-		cfg.Features.Provider = ProviderDefault
+		cfg.Features.Provider = provider.ProviderIDTypeDefault
 	}
 
 	if cfg.Features.Network.Mode == "" {

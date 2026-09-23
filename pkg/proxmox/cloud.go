@@ -21,6 +21,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"time"
 
 	pxpool "github.com/sergelogvinov/go-proxmox-pool"
 	ccmConfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
@@ -54,6 +55,9 @@ const (
 
 	// LabelTopologyHAGroupPrefix is the prefix for labels used to store Proxmox HA group information.
 	LabelTopologyHAGroupPrefix = "group.topology." + Group + "/"
+
+	// vmCacheTTL defines the time-to-live for cached VM information.
+	vmCacheTTL = 5 * time.Second
 )
 
 type cloud struct {
@@ -86,7 +90,7 @@ func init() {
 func newCloud(config *ccmConfig.ClustersConfig) (cloudprovider.Interface, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	px, err := pxpool.NewProxmoxPool(config.Clusters)
+	px, err := pxpool.NewProxmoxPool(config.Clusters, pxpool.WithCacheTTL(pxpool.ResourceKindVM, vmCacheTTL))
 	if err != nil {
 		cancel()
 

@@ -27,6 +27,7 @@ import (
 	"github.com/sergelogvinov/go-proxmox-rest/fakeapi"
 	"github.com/sergelogvinov/go-proxmox-rest/nodes/qemu"
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
+	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -235,7 +236,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 			node: &v1.Node{
 				Name: "cluster-1-node-1",
 				Spec: v1.NodeSpec{
-					ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					ProviderID: ternary(ts.i.provider == provider.ProviderIDTypeCapmox,
 						"proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
 						"proxmox://cluster-1/100",
 					),
@@ -253,7 +254,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 			node: &v1.Node{
 				Name: "cluster-1-node-3",
 				Spec: v1.NodeSpec{
-					ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					ProviderID: ternary(ts.i.provider == provider.ProviderIDTypeCapmox,
 						"proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
 						"proxmox://cluster-1/100",
 					),
@@ -271,7 +272,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 			node: &v1.Node{
 				Name: "cluster-1-node-1",
 				Spec: v1.NodeSpec{
-					ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					ProviderID: ternary(ts.i.provider == provider.ProviderIDTypeCapmox,
 						"proxmox://8af7110d-0000-0000-0000-9527d10a6583",
 						"proxmox://cluster-1/100",
 					),
@@ -282,7 +283,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 					},
 				},
 			},
-			expected: ternary(ts.i.provider == providerconfig.ProviderCapmox, true, false),
+			expected: ternary(ts.i.provider == provider.ProviderIDTypeCapmox, true, false),
 		},
 		{
 			msg: "NodeExistsWithDifferentNameAndUUID",
@@ -313,7 +314,7 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 					},
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					ProviderID: ternary(ts.i.provider == provider.ProviderIDTypeCapmox,
 						"proxmox://11833f4c-341f-4bd3-aad7-f7abea000002",
 						"proxmox://cluster-1/104"),
 				},
@@ -375,6 +376,28 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 				Status: v1.NodeStatus{
 					NodeInfo: v1.NodeSystemInfo{
 						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abed000000",
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			// VM in either cluster matches its name or UUID, while an unrelated
+			// Proxmox node (pve-4, hosting VMID 104) is offline. findVM's
+			// name+UUID search correctly reports ErrInstanceNotFound, but its
+			// UUID-only fallback (see findVMByMatch in utils.go) flags VMID
+			// 104's "unknown" status as ErrNodeInaccessible even though VMID
+			// 104 has nothing to do with this node. InstanceExists must still
+			// report the instance as existing (true).
+			msg: "VMWithUnreachablePVENode",
+			node: &v1.Node{
+				Name: "cluster-1-node-999",
+				Spec: v1.NodeSpec{
+					ProviderID: "proxmox://00000000-0000-0000-0000-000000000000",
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "00000000-0000-0000-0000-000000000000",
 					},
 				},
 			},
@@ -527,7 +550,7 @@ func (ts *configuredTestSuite) TestInstanceShutdown() {
 					},
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					ProviderID: ternary(ts.i.provider == provider.ProviderIDTypeCapmox,
 						"proxmox://11833f4c-341f-4bd3-aad7-f7abea000002",
 						"proxmox://cluster-1/104"),
 				},
@@ -587,6 +610,11 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 			msg: "NodeUndefined",
 			node: &v1.Node{
 				Name: "test-node-1",
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "11833f4c-341f-4bd3-0000-00000000000",
+					},
+				},
 			},
 			expected: &cloudprovider.InstanceMetadata{},
 		},
@@ -675,7 +703,7 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
+				ProviderID: ternary(ts.i.provider == provider.ProviderIDTypeCapmox,
 					"proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
 					"proxmox://cluster-1/100",
 				),
@@ -721,7 +749,7 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
+				ProviderID: ternary(ts.i.provider == provider.ProviderIDTypeCapmox,
 					"proxmox://11833f4c-341f-4bd3-aad7-f7abed000000",
 					"proxmox://cluster-1/100",
 				),
@@ -771,7 +799,7 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
+				ProviderID: ternary(ts.i.provider == provider.ProviderIDTypeCapmox,
 					"proxmox://11833f4c-341f-4bd3-aad7-f7abed000001",
 					"proxmox://cluster-1/101",
 				),
@@ -809,7 +837,7 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 					},
 				},
 				Spec: v1.NodeSpec{
-					ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
+					ProviderID: ternary(ts.i.provider == provider.ProviderIDTypeCapmox,
 						"proxmox://11833f4c-341f-4bd3-aad7-f7abea000002",
 						"proxmox://cluster-1/104"),
 				},
@@ -863,7 +891,7 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				},
 			},
 			expected: &cloudprovider.InstanceMetadata{
-				ProviderID: ternary(ts.i.provider == providerconfig.ProviderCapmox,
+				ProviderID: ternary(ts.i.provider == provider.ProviderIDTypeCapmox,
 					"proxmox://11833f4c-341f-4bd3-aad7-f7abea000000",
 					"proxmox://cluster-2/103",
 				),
