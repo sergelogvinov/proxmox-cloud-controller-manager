@@ -188,68 +188,41 @@ func syncNodeLabels(c *client, node *corev1.Node, nodeLabels map[string]string) 
 	return nil
 }
 
-// findVMByNode searches every configured cluster for a VM whose name is
-// prefixed by node.Name and whose SMBIOS UUID matches the node's reported
-// SystemUUID. Narrowing by name first keeps UUID resolution cheap:
+// findVM searches every configured cluster for a VM whose SMBIOS UUID
+// matches uuid. When name (hostname) is not empty, it first narrows the search to
+// resources whose name is prefixed by it (keeping UUID resolution cheap, as
 // proxmoxpool.WithUUID only issues a Config call against candidates that
-// already passed the name filter (or resolves instantly via the pool's
-// UUID index). A cluster whose guest is on an unreachable node is skipped
-// and accumulated into the returned error rather than aborting the search.
+// already passed the name filter, or resolves instantly via the pool's UUID
+// index) and falls back to a plain UUID search if that yields nothing. A
+// cluster whose guest is on an unreachable node is skipped and accumulated
+// into the returned error rather than aborting the search.
 //
 // +proxmox:rbac:feature=base
-func findVMByNode(ctx context.Context, pool *proxmoxpool.ProxmoxPool, node *corev1.Node) (vmID int, region string, err error) {
-	var errs error
-
-	for _, name := range pool.List() {
-		vms, err := pool.Cluster(name).List(ctx, proxmoxpool.ResourceKindVM,
-			proxmoxpool.SkipTemplates(),
-			proxmoxpool.WithMatch(func(rs *pxcluster.Resource) (bool, error) {
-				if !strings.HasPrefix(rs.Name, node.Name) {
-					return false, nil
-				}
-
-				if rs.Status == "unknown" {
-					errs = multierr.Append(errs, fmt.Errorf("region %s node %s: %w", name, rs.Node, proxmoxpool.ErrNodeInaccessible))
-
-					return false, nil //nolint: nilerr
-				}
-
-				return true, nil
-			}),
-			proxmoxpool.WithUUID(node.Status.NodeInfo.SystemUUID),
-		)
-		if err != nil {
-			return 0, "", err
-		}
-
-		if len(vms) > 0 {
-			return vms[0].VMID, name, nil
+func findVM(ctx context.Context, pool *proxmoxpool.ProxmoxPool, name, uuid string) (vmID int, region string, err error) {
+	if name != "" {
+		if vmID, region, err = findVMByMatch(ctx, pool, name, uuid); err == nil {
+			return vmID, region, nil
 		}
 	}
 
-	if errs != nil {
-		return 0, "", errs
-	}
-
-	return 0, "", proxmoxpool.ErrInstanceNotFound
+	return findVMByMatch(ctx, pool, "", uuid)
 }
 
-// findVMByUUID searches every configured cluster for a VM whose SMBIOS
-// UUID matches uuid. See findVMByNode for the unreachable-node error
-// accumulation behavior.
-//
-// +proxmox:rbac:feature=base
-func findVMByUUID(ctx context.Context, pool *proxmoxpool.ProxmoxPool, uuid string) (vmID int, region string, err error) {
+func findVMByMatch(ctx context.Context, pool *proxmoxpool.ProxmoxPool, name, uuid string) (vmID int, region string, err error) {
 	var errs error
 
-	for _, name := range pool.List() {
-		vms, err := pool.Cluster(name).List(ctx, proxmoxpool.ResourceKindVM,
+	for _, clusterName := range pool.List() {
+		vms, err := pool.Cluster(clusterName).List(ctx, proxmoxpool.ResourceKindVM,
 			proxmoxpool.SkipTemplates(),
 			proxmoxpool.WithMatch(func(rs *pxcluster.Resource) (bool, error) {
 				if rs.Status == "unknown" {
-					errs = multierr.Append(errs, fmt.Errorf("region %s node %s: %w", name, rs.Node, proxmoxpool.ErrNodeInaccessible))
+					errs = multierr.Append(errs, fmt.Errorf("region %s node %s: %w", clusterName, rs.Node, proxmoxpool.ErrNodeInaccessible))
 
 					return false, nil //nolint: nilerr
+				}
+
+				if name != "" && !strings.HasPrefix(rs.Name, name) {
+					return false, nil
 				}
 
 				return true, nil
@@ -261,7 +234,7 @@ func findVMByUUID(ctx context.Context, pool *proxmoxpool.ProxmoxPool, uuid strin
 		}
 
 		if len(vms) > 0 {
-			return vms[0].VMID, name, nil
+			return vms[0].VMID, clusterName, nil
 		}
 	}
 

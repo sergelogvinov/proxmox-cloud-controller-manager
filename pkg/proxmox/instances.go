@@ -56,7 +56,7 @@ type instanceInfo struct {
 type instances struct {
 	c             *client
 	zoneAsHAGroup bool
-	provider      providerconfig.Provider
+	provider      provider.IDType
 	networkOpts   instanceNetops
 	updateLabels  bool
 }
@@ -112,7 +112,7 @@ func (i *instances) InstanceExists(ctx context.Context, node *v1.Node) (bool, er
 		return true, nil
 	}
 
-	mc := metrics.NewMetricContext("getVmInfo")
+	mc := metrics.NewMetricContext("getInstanceInfo")
 	if _, err := i.getInstanceInfo(ctx, node); mc.ObserveRequest(err) != nil {
 		if errors.Is(err, cloudprovider.InstanceNotFound) {
 			klog.V(4).InfoS("instances.InstanceExists() instance not found", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
@@ -149,18 +149,11 @@ func (i *instances) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, 
 		return false, nil
 	}
 
-	vmID, region, err := provider.ParseProviderID(node.Spec.ProviderID)
+	vmID, region, err := i.resolveInstanceTopology(ctx, node)
 	if err != nil {
-		if i.provider == providerconfig.ProviderDefault {
-			klog.ErrorS(err, "instances.InstanceShutdown() failed to parse providerID", "providerID", node.Spec.ProviderID)
-		}
+		klog.ErrorS(err, "instances.InstanceShutdown() failed to resolve providerID", "node", klog.KObj(node))
 
-		vmID, region, err = i.parseProviderIDFromNode(node)
-		if err != nil {
-			klog.ErrorS(err, "instances.InstanceShutdown() failed to parse providerID from node", "node", klog.KObj(node))
-
-			return false, nil
-		}
+		return false, nil
 	}
 
 	mc := metrics.NewMetricContext("getVmState")
@@ -233,7 +226,7 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 	}
 
 	if providerID == "" {
-		if i.provider == providerconfig.ProviderCapmox {
+		if i.provider == provider.ProviderIDTypeCapmox {
 			providerID = provider.GetProviderIDFromUUID(info.UUID)
 			annotations[AnnotationProxmoxInstanceID] = fmt.Sprintf("%d", info.ID)
 		} else {
@@ -302,43 +295,25 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instanceInfo, error) {
 	klog.V(4).InfoS("instances.getInstanceInfo() called", "node", klog.KRef("", node.Name), "provider", i.provider)
 
-	var (
-		vmID   int
-		region string
-		err    error
-	)
-
-	providerID := node.Spec.ProviderID
-
-	vmID, region, err = provider.ParseProviderID(providerID)
-	if err != nil {
-		if i.provider == providerconfig.ProviderDefault {
-			klog.ErrorS(err, "instances.getInstanceInfo() failed to parse providerID", "node", klog.KObj(node), "providerID", providerID)
-		}
-
-		vmID, region, err = i.parseProviderIDFromNode(node)
-		if err != nil {
-			klog.ErrorS(err, "instances.getInstanceInfo() failed to parse providerID from node", "node", klog.KObj(node))
-		}
-	}
-
+	vmID, region, _ := i.resolveInstanceTopology(ctx, node) //nolint:errcheck
 	if vmID == 0 || region == "" {
-		klog.V(4).InfoS("instances.getInstanceInfo() trying to find node in cluster", "node", klog.KObj(node), "providerID", providerID)
+		klog.V(4).InfoS("instances.getInstanceInfo() trying to find node in cluster", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
 
-		mc := metrics.NewMetricContext("findVmByNode")
+		if node.Status.NodeInfo.SystemUUID == "" {
+			return nil, fmt.Errorf("node has empty nodeInfo.SystemUUID")
+		}
 
-		vmID, region, err = findVMByNode(ctx, i.c.pxpool, node)
+		mc := metrics.NewMetricContext("findVM")
+
+		var err error
+
+		vmID, region, err = findVM(ctx, i.c.pxpool, node.Name, node.Status.NodeInfo.SystemUUID)
 		if mc.ObserveRequest(err) != nil {
-			mc := metrics.NewMetricContext("findVmByUUID")
-
-			vmID, region, err = findVMByUUID(ctx, i.c.pxpool, node.Status.NodeInfo.SystemUUID)
-			if mc.ObserveRequest(err) != nil {
-				if errors.Is(err, proxmoxpool.ErrInstanceNotFound) {
-					return nil, cloudprovider.InstanceNotFound
-				}
-
-				return nil, err
+			if errors.Is(err, proxmoxpool.ErrInstanceNotFound) {
+				return nil, cloudprovider.InstanceNotFound
 			}
+
+			return nil, err
 		}
 	}
 
@@ -376,13 +351,48 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 
 	info.Type = vm.Type
 	if !instanceTypeNameRegexp.MatchString(info.Type) {
-		info.Type = fmt.Sprintf("%dVCPU-%dGB", int(vm.CPUs), vm.MaxMem/1024/1024/1024)
+		info.Type = fmt.Sprintf("%dVCPU-%dGB", vm.CPUs, vm.MaxMem/1024/1024/1024)
 	}
 
 	return info, nil
 }
 
-func (i *instances) parseProviderIDFromNode(node *v1.Node) (vmID int, region string, err error) {
+// resolveInstanceTopology resolves the vmID and region for node from its
+// providerID, falling back to node annotations and, for UUID-form
+// providerIDs, to a direct cluster search by UUID.
+func (i *instances) resolveInstanceTopology(ctx context.Context, node *v1.Node) (vmID int, region string, err error) {
+	pid, err := provider.ParseProviderID(node.Spec.ProviderID)
+
+	switch {
+	case err == nil && pid.Type == provider.ProviderIDTypeDefault:
+		vmID, region = pid.VMID, pid.Region
+	case err == nil && pid.Type == provider.ProviderIDTypeCapmox:
+		vmID, region, err = i.parseProviderIDFromNodeAnnotations(node)
+		if err != nil {
+			klog.V(4).InfoS("instances.resolveInstanceTopology() failed to resolve providerID from node annotations, searching cluster",
+				"node", klog.KObj(node), "providerID", node.Spec.ProviderID)
+
+			mc := metrics.NewMetricContext("findVM")
+
+			vmID, region, err = findVM(ctx, i.c.pxpool, "", pid.UUID)
+			mc.ObserveRequest(err) //nolint:errcheck
+		}
+	default:
+		if i.provider == provider.ProviderIDTypeDefault {
+			klog.ErrorS(err, "instances.resolveInstanceTopology() failed to parse providerID", "node", klog.KObj(node), "providerID", node.Spec.ProviderID)
+		}
+
+		vmID, region, err = i.parseProviderIDFromNodeAnnotations(node)
+		if err != nil {
+			klog.ErrorS(err, "instances.resolveInstanceTopology() failed to parse providerID from node", "node", klog.KObj(node))
+		}
+	}
+
+	return vmID, region, err
+}
+
+// parseProviderIDFromNodeAnnotations extracts the vmID and region from the node's annotations.
+func (i *instances) parseProviderIDFromNodeAnnotations(node *v1.Node) (vmID int, region string, err error) {
 	if node.Annotations[AnnotationProxmoxInstanceID] != "" {
 		region = node.Labels[LabelTopologyRegion]
 		if region == "" {
@@ -391,15 +401,15 @@ func (i *instances) parseProviderIDFromNode(node *v1.Node) (vmID int, region str
 
 		vmID, err = strconv.Atoi(node.Annotations[AnnotationProxmoxInstanceID])
 		if err != nil {
-			return 0, "", fmt.Errorf("instances.getProviderIDFromNode() parse annotation error: %v", err)
+			return 0, "", fmt.Errorf("instances.parseProviderIDFromNodeAnnotations() parse annotation error: %v", err)
 		}
 
 		if _, err := i.c.pxpool.Get(region); err != nil {
-			return 0, "", fmt.Errorf("instances.getProviderIDFromNode() get cluster error: %v", err)
+			return 0, "", fmt.Errorf("instances.parseProviderIDFromNodeAnnotations() get cluster error: %v", err)
 		}
 
 		return vmID, region, nil
 	}
 
-	return 0, "", fmt.Errorf("instances.getProviderIDFromNode() no annotation found")
+	return 0, "", fmt.Errorf("instances.parseProviderIDFromNodeAnnotations() no annotation found")
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
+	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
 )
 
 func TestReadCloudConfig(t *testing.T) {
@@ -98,7 +99,7 @@ clusters:
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 1, len(cfg.Clusters))
-	assert.Equal(t, providerconfig.ProviderDefault, cfg.Features.Provider)
+	assert.Equal(t, provider.ProviderIDTypeDefault, cfg.Features.Provider)
 
 	// Valid config with one cluster (username/password), explicit provider default
 	cfg, err = providerconfig.ReadCloudConfig(strings.NewReader(`
@@ -114,7 +115,7 @@ clusters:
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 1, len(cfg.Clusters))
-	assert.Equal(t, providerconfig.ProviderDefault, cfg.Features.Provider)
+	assert.Equal(t, provider.ProviderIDTypeDefault, cfg.Features.Provider)
 
 	// Valid config with one cluster (username/password), explicit provider capmox
 	cfg, err = providerconfig.ReadCloudConfig(strings.NewReader(`
@@ -130,7 +131,7 @@ clusters:
 	assert.Nil(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 1, len(cfg.Clusters))
-	assert.Equal(t, providerconfig.ProviderCapmox, cfg.Features.Provider)
+	assert.Equal(t, provider.ProviderIDTypeCapmox, cfg.Features.Provider)
 
 	// Errors when token_id/token_secret are set with token_id_file/token_secret_file
 	_, err = providerconfig.ReadCloudConfig(strings.NewReader(`

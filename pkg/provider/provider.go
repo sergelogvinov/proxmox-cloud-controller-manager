@@ -29,7 +29,32 @@ const (
 	ProviderName = "proxmox"
 )
 
-var providerIDRegexp = regexp.MustCompile(`^` + ProviderName + `://([^/]*)/([^/]+)$`)
+// IDType identifies which providerID form was parsed.
+type IDType string
+
+const (
+	// ProviderIDTypeDefault marks a providerID in the "proxmox://region/vmID" form.
+	ProviderIDTypeDefault IDType = "default"
+	// ProviderIDTypeCapmox marks a providerID in the "proxmox://uuid" form.
+	ProviderIDTypeCapmox IDType = "capmox"
+)
+
+// ID is the structured representation of a parsed Proxmox providerID.
+type ID struct {
+	// Type is the form the providerID was parsed from.
+	Type IDType
+	// VMID is the VM ID, populated when Type is ProviderIDTypeDefault.
+	VMID int
+	// Region is the cluster/region name, populated when Type is ProviderIDTypeDefault.
+	Region string
+	// UUID is the VM SMBIOS UUID, populated when Type is ProviderIDTypeCapmox.
+	UUID string
+}
+
+var (
+	providerIDRegexp   = regexp.MustCompile(`^` + ProviderName + `://([^/]*)/([^/]+)$`)
+	providerUUIDRegexp = regexp.MustCompile(`^` + ProviderName + `://([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$`)
+)
 
 // GetProviderIDFromID returns the magic providerID for kubernetes node.
 func GetProviderIDFromID(region string, vmID int) string {
@@ -41,40 +66,32 @@ func GetProviderIDFromUUID(uuid string) string {
 	return fmt.Sprintf("%s://%s", ProviderName, uuid)
 }
 
-// GetVMID returns the VM ID from the providerID.
-func GetVMID(providerID string) (int, error) {
+// ParseProviderID parses a providerID in either the "proxmox://region/vmID"
+// or the "proxmox://uuid" form and returns its structured representation.
+func ParseProviderID(providerID string) (*ID, error) {
 	if !strings.HasPrefix(providerID, ProviderName) {
-		return 0, fmt.Errorf("foreign providerID or empty \"%s\"", providerID)
+		return nil, fmt.Errorf("foreign providerID or empty %q", providerID)
 	}
 
-	matches := providerIDRegexp.FindStringSubmatch(providerID)
-	if len(matches) != 3 {
-		return 0, fmt.Errorf("providerID \"%s\" didn't match expected format \"%s://region/InstanceID\"", providerID, ProviderName)
+	if matches := providerIDRegexp.FindStringSubmatch(providerID); len(matches) == 3 {
+		vmID, err := strconv.Atoi(matches[2])
+		if err != nil {
+			return nil, fmt.Errorf("InstanceID have to be a number, but got %q", matches[2])
+		}
+
+		return &ID{
+			Type:   ProviderIDTypeDefault,
+			VMID:   vmID,
+			Region: matches[1],
+		}, nil
 	}
 
-	vmID, err := strconv.Atoi(matches[2])
-	if err != nil {
-		return 0, fmt.Errorf("InstanceID have to be a number, but got \"%s\"", matches[2])
+	if matches := providerUUIDRegexp.FindStringSubmatch(providerID); len(matches) == 2 {
+		return &ID{
+			Type: ProviderIDTypeCapmox,
+			UUID: matches[1],
+		}, nil
 	}
 
-	return vmID, nil
-}
-
-// ParseProviderID returns the VmRef and region from the providerID.
-func ParseProviderID(providerID string) (int, string, error) {
-	if !strings.HasPrefix(providerID, ProviderName) {
-		return 0, "", fmt.Errorf("foreign providerID or empty \"%s\"", providerID)
-	}
-
-	matches := providerIDRegexp.FindStringSubmatch(providerID)
-	if len(matches) != 3 {
-		return 0, "", fmt.Errorf("providerID \"%s\" didn't match expected format \"%s://region/InstanceID\"", providerID, ProviderName)
-	}
-
-	vmID, err := strconv.Atoi(matches[2])
-	if err != nil {
-		return 0, "", fmt.Errorf("InstanceID have to be a number, but got \"%s\"", matches[2])
-	}
-
-	return vmID, matches[1], nil
+	return nil, fmt.Errorf("providerID %q didn't match expected format %q or %q", providerID, ProviderName+"://region/InstanceID", ProviderName+"://UUID")
 }

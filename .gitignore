@@ -1,5 +1,22 @@
+# IDEs and editors
+/.idea
+/.vscode/
+
+# If you prefer the allow list template instead of the deny list, see community template:
+# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
-/bin/
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+vendor/
+.devcontainer/
+
+#
 /charts/proxmox-cloud-controller-manager/values-dev.yaml
 /proxmox-cloud-controller-manager*
 /kubeconfig
