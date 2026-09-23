@@ -3,9 +3,11 @@ module github.com/sergelogvinov/proxmox-cloud-controller-manager
 go 1.27.1
 
 // replace github.com/sergelogvinov/go-proxmox-rest => ../proxmox/go-proxmox-rest
+// replace github.com/sergelogvinov/go-proxmox-pool => ../go-proxmox-pool
 
 require (
 	github.com/pkg/errors v0.9.1
+	github.com/sergelogvinov/go-proxmox-pool v0.0.0-20260923043120-bad7c5d4e5f6
 	github.com/sergelogvinov/go-proxmox-rest v0.0.0-20260922140521-cb1976ec06d4
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.12.1

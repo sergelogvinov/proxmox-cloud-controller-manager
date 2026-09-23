@@ -166,7 +166,7 @@ func (i *instances) processIP(_ context.Context, addresses *[]v1.NodeAddress, ad
 func (i *instances) getInstanceNics(ctx context.Context, info *instanceInfo) ([]agent.NetworkInterface, error) {
 	result := make([]agent.NetworkInterface, 0)
 
-	px, err := i.c.pxpool.GetProxmoxCluster(info.Region)
+	px, err := i.c.pxpool.Get(info.Region)
 	if err != nil {
 		return result, err
 	}

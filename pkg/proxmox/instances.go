@@ -25,10 +25,10 @@ import (
 	"strconv"
 	"strings"
 
+	proxmoxpool "github.com/sergelogvinov/go-proxmox-pool"
 	providerconfig "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/config"
 	metrics "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/metrics"
 	provider "github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/provider"
-	"github.com/sergelogvinov/proxmox-cloud-controller-manager/pkg/proxmoxpool"
 
 	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
@@ -165,12 +165,16 @@ func (i *instances) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, 
 
 	mc := metrics.NewMetricContext("getVmState")
 
-	vm, err := i.c.pxpool.GetVMResourceByID(ctx, region, vmID)
+	vm, err := i.c.pxpool.Cluster(region).Get(ctx, proxmoxpool.ResourceKindVM, strconv.Itoa(vmID))
 	if mc.ObserveRequest(err) != nil {
-		if errors.Is(err, proxmoxpool.ErrRegionNotFound) {
+		if errors.Is(err, proxmoxpool.ErrClusterNotFound) {
 			klog.ErrorS(err, "instances.InstanceShutdown() failed to get Proxmox cluster", "region", region)
 
 			return false, nil
+		}
+
+		if errors.Is(err, proxmoxpool.ErrResourceNotFound) {
+			return false, proxmoxpool.ErrInstanceNotFound
 		}
 
 		return false, err
@@ -246,7 +250,7 @@ func (i *instances) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloud
 		AdditionalLabels: labels,
 	}
 
-	haGroups, err := i.c.pxpool.GetNodeHAGroups(ctx, info.Region, info.Node)
+	haGroups, err := i.c.pxpool.Cluster(info.Region).GetNodeHAGroups(ctx, info.Node)
 	if err != nil {
 		if !errors.Is(err, proxmoxpool.ErrHAGroupNotFound) {
 			klog.ErrorS(err, "instances.InstanceMetadata() failed to get HA group for the node", "node", klog.KRef("", node.Name), "region", info.Region)
@@ -323,11 +327,11 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 
 		mc := metrics.NewMetricContext("findVmByNode")
 
-		vmID, region, err = i.c.pxpool.FindVMByNode(ctx, node)
+		vmID, region, err = findVMByNode(ctx, i.c.pxpool, node)
 		if mc.ObserveRequest(err) != nil {
 			mc := metrics.NewMetricContext("findVmByUUID")
 
-			vmID, region, err = i.c.pxpool.FindVMByUUID(ctx, node.Status.NodeInfo.SystemUUID)
+			vmID, region, err = findVMByUUID(ctx, i.c.pxpool, node.Status.NodeInfo.SystemUUID)
 			if mc.ObserveRequest(err) != nil {
 				if errors.Is(err, proxmoxpool.ErrInstanceNotFound) {
 					return nil, cloudprovider.InstanceNotFound
@@ -340,7 +344,7 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 
 	mc := metrics.NewMetricContext("getVMConfig")
 
-	vm, err := i.c.pxpool.GetVMConfig(ctx, region, vmID)
+	vm, err := i.c.pxpool.Cluster(region).GetVMConfig(ctx, vmID)
 	if mc.ObserveRequest(err) != nil {
 		if errors.Is(err, proxmoxpool.ErrInstanceNotFound) {
 			return nil, cloudprovider.InstanceNotFound
@@ -390,7 +394,7 @@ func (i *instances) parseProviderIDFromNode(node *v1.Node) (vmID int, region str
 			return 0, "", fmt.Errorf("instances.getProviderIDFromNode() parse annotation error: %v", err)
 		}
 
-		if _, err := i.c.pxpool.GetProxmoxCluster(region); err != nil {
+		if _, err := i.c.pxpool.Get(region); err != nil {
 			return 0, "", fmt.Errorf("instances.getProviderIDFromNode() get cluster error: %v", err)
 		}
 
