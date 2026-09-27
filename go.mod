@@ -7,8 +7,8 @@ go 1.27.1
 
 require (
 	github.com/pkg/errors v0.9.1
-	github.com/sergelogvinov/go-proxmox-pool v0.0.0-20260923113905-7d2f06110ee4
-	github.com/sergelogvinov/go-proxmox-rest v0.0.0-20260922140521-cb1976ec06d4
+	github.com/sergelogvinov/go-proxmox-pool v0.0.0-20260927180419-6bc833630250
+	github.com/sergelogvinov/go-proxmox-rest v0.0.0-20260927180256-030c7f74d41b
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.12.1
 	go.uber.org/multierr v1.11.0
