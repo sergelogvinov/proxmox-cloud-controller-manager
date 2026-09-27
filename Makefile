@@ -162,6 +162,7 @@ images: ## Build images
 		--build-arg VERSION="$(VERSION)" \
 		--build-arg TAG="$(TAG)" \
 		--build-arg SHA="$(SHA)" \
+		--target=release \
 		-t $(IMAGE):$(TAG) \
 		-f Dockerfile .
 
