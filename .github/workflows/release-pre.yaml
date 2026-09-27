@@ -9,7 +9,7 @@ jobs:
   build-publish:
     name: "Check release docs"
     runs-on: ubuntu-latest
-    if:  startsWith(github.head_ref, 'release-')
+    if: startsWith(github.head_ref, 'release-')
     permissions:
       contents: read
       packages: write
@@ -19,14 +19,18 @@ jobs:
       - name: Unshallow
         run: git fetch --prune --unshallow
 
-      - name: Release version
-        if: startsWith(github.head_ref, 'release-please')
-        run: jq -r '"TAG=v"+.[]' hack/release-please-manifest.json >> "$GITHUB_ENV"
-
+      - name: Install Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v4.3.0
       - name: Helm docs
         uses: gabe565/setup-helm-docs-action@d5c35bdc9133cfbea3b671acadf50a29029e87c2 # v1.0.4
         with:
-          version: v1.11.3
+          version: v1.14.2
+
+      - name: Release version
+        if: startsWith(github.head_ref, 'release-please')
+        run: jq -r '"TAG=v"+.[]' hack/release-please-manifest.json >> "$GITHUB_ENV"
 
       - name: Generate
         run: make docs
