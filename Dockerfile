@@ -27,3 +27,13 @@ ARG TARGETARCH
 COPY --from=builder /src/bin/proxmox-cloud-controller-manager-${TARGETARCH} /bin/proxmox-cloud-controller-manager
 
 ENTRYPOINT ["/bin/proxmox-cloud-controller-manager"]
+
+########################################
+
+FROM --platform=${TARGETARCH} scratch AS goreleaser
+
+COPY --from=gcr.io/distroless/static-debian13:nonroot . .
+ARG TARGETPLATFORM
+COPY ${TARGETPLATFORM}/proxmox-cloud-controller-manager /bin/proxmox-cloud-controller-manager
+
+ENTRYPOINT ["/bin/proxmox-cloud-controller-manager"]

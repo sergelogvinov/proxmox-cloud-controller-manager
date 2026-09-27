@@ -10,12 +10,18 @@ on:
       - "cmd/**"
       - "pkg/**"
       - "Dockerfile"
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
 
 jobs:
   build:
     name: Build
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
     permissions:
       contents: read
     steps:
