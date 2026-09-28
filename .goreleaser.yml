@@ -11,7 +11,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -X k8s.io/component-base/version.gitVersion={{ .Version }}
+      - -X k8s.io/component-base/version.gitVersion=v{{ .Version }}
     goos:
       - linux
     goarch:
