@@ -1,4 +1,11 @@
 <a name="v0.11.0"></a>
+## [0.16.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.16.0...v0.16.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* goreleaser ([8481732](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/8481732532dcbbc653b8408fceec3c3e3ae8500e))
+
 ## [0.16.0](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.15.0...v0.16.0) (2026-09-27)
 
 
