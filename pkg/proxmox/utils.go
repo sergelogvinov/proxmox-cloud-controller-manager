@@ -90,7 +90,7 @@ func ParseCIDRRuleset(cidrList string) (allowList, ignoreList []*net.IPNet, err 
 		}
 	}
 
-	return ignoreList, allowList, nil
+	return allowList, ignoreList, nil
 }
 
 // ParseCIDRList parses a comma separated list of CIDRs and returns a slice of *net.IPNet ignoring errors
