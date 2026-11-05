@@ -251,21 +251,11 @@ func addToNodeAddresses(addresses *[]v1.NodeAddress, addAddresses ...v1.NodeAddr
 // removeFromNodeAddresses removes the NodeAddresses from the passed-by-pointer
 // slice if they already exist.
 func removeFromNodeAddresses(addresses *[]v1.NodeAddress, removeAddresses ...v1.NodeAddress) {
-	var indexesToRemove []int
-
-	for _, remove := range removeAddresses {
-		for i, existing := range slices.Backward(*addresses) {
-			if existing.Address == remove.Address && (existing.Type == remove.Type || remove.Type == "") {
-				indexesToRemove = append(indexesToRemove, i)
-			}
-		}
-	}
-
-	for _, i := range indexesToRemove {
-		if i < len(*addresses) {
-			*addresses = append((*addresses)[:i], (*addresses)[i+1:]...)
-		}
-	}
+	*addresses = slices.DeleteFunc(*addresses, func(existing v1.NodeAddress) bool {
+		return slices.ContainsFunc(removeAddresses, func(remove v1.NodeAddress) bool {
+			return existing.Address == remove.Address && (existing.Type == remove.Type || remove.Type == "")
+		})
+	})
 }
 
 // isAddressInCIDRList checks if the given address is contained in any of the CIDRs in the list.
