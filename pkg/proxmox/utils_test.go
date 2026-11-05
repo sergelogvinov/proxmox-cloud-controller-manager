@@ -58,6 +58,20 @@ func TestParseCIDRRuleset(t *testing.T) {
 			expectedError:      []any{},
 		},
 		{
+			msg:                "Valid CIDRs without ignore",
+			cidrs:              "192.168.0.1/16,2001:db8:85a3::8a2e:370:7334/112",
+			expectedAllowList:  []*net.IPNet{mustParseCIDR("192.168.0.0/16"), mustParseCIDR("2001:db8:85a3::8a2e:370:0/112")},
+			expectedIgnoreList: []*net.IPNet{},
+			expectedError:      []any{},
+		},
+		{
+			msg:                "Only ignored CIDRs",
+			cidrs:              "!10.0.0.5/8",
+			expectedAllowList:  []*net.IPNet{},
+			expectedIgnoreList: []*net.IPNet{mustParseCIDR("10.0.0.0/8")},
+			expectedError:      []any{},
+		},
+		{
 			msg:                "Valid CIDRs with ignore",
 			cidrs:              "192.168.0.1/16,!10.0.0.5/8,144.0.0.7/16,!13.0.0.9/8",
 			expectedAllowList:  []*net.IPNet{mustParseCIDR("192.168.0.0/16"), mustParseCIDR("144.0.0.0/16")},
@@ -73,7 +87,13 @@ func TestParseCIDRRuleset(t *testing.T) {
 			allowList, ignoreList, err := proxmox.ParseCIDRRuleset(testCase.cidrs)
 
 			assert.Equal(t, len(testCase.expectedAllowList), len(allowList), "Allow list length mismatch")
-			assert.Equal(t, len(testCase.expectedIgnoreList), len(ignoreList), "Allow list length mismatch")
+			assert.Equal(t, len(testCase.expectedIgnoreList), len(ignoreList), "Ignore list length mismatch")
+
+			if err == nil {
+				// Allow list order is the sort priority, so compare in order.
+				assert.Equal(t, cidrStrings(testCase.expectedAllowList), cidrStrings(allowList), "Allow list mismatch")
+				assert.Equal(t, cidrStrings(testCase.expectedIgnoreList), cidrStrings(ignoreList), "Ignore list mismatch")
+			}
 
 			if len(testCase.expectedError) != 0 {
 				assert.EqualError(t, err, fmt.Sprintf(proxmox.ErrorCIDRConflict, testCase.expectedError...), "Error mismatch")
@@ -82,6 +102,15 @@ func TestParseCIDRRuleset(t *testing.T) {
 			}
 		})
 	}
+}
+
+func cidrStrings(cidrs []*net.IPNet) []string {
+	out := make([]string, 0, len(cidrs))
+	for _, cidr := range cidrs {
+		out = append(out, cidr.String())
+	}
+
+	return out
 }
 
 func mustParseCIDR(cidr string) *net.IPNet {
