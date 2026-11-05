@@ -1,4 +1,12 @@
 <a name="v0.11.0"></a>
+## [0.16.2](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.16.1...v0.16.2) (2026-11-05)
+
+
+### Bug Fixes
+
+* keep ip_sort_order cidrs out of the ignore list ([8e4cecc](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/8e4cecc4fd27795622b0c7cf2b8889b5f6fd1067))
+* remove the right addresses when several are ignored ([faef67a](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/commit/faef67a8fd1b93de81119f41fcd74743043391b1))
+
 ## [0.16.1](https://github.com/sergelogvinov/proxmox-cloud-controller-manager/compare/v0.16.0...v0.16.1) (2026-09-28)
 
 
