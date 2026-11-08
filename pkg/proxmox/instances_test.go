@@ -19,8 +19,10 @@ package proxmox
 import (
 	"encoding/base64"
 	"fmt"
+	"net"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	proxmoxpool "github.com/sergelogvinov/go-proxmox-pool"
@@ -927,6 +929,68 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				ts.Require().NoError(err)
 				ts.Require().Equal(testCase.expected, meta)
 			}
+		})
+	}
+}
+
+func TestNewInstancesNetworkCIDRs(t *testing.T) {
+	t.Parallel()
+
+	cidrStrings := func(cidrs []*net.IPNet) []string {
+		out := make([]string, 0, len(cidrs))
+		for _, c := range cidrs {
+			out = append(out, c.String())
+		}
+
+		return out
+	}
+
+	tests := []struct {
+		msg              string
+		network          providerconfig.NetworkOpts
+		expectedExternal []string
+		expectedSort     []string
+		expectedIgnored  []string
+	}{
+		{
+			msg: "external cidrs with exclusion",
+			network: providerconfig.NetworkOpts{
+				ExternalIPCIDRS: "192.168.0.0/16,2001:db8:85a3::8a2e:370:7334/112,!10.0.0.0/8",
+			},
+			expectedExternal: []string{"192.168.0.0/16", "2001:db8:85a3::8a2e:370:0/112"},
+			expectedSort:     []string{},
+			expectedIgnored:  []string{"10.0.0.0/8"},
+		},
+		{
+			msg: "exclusions from external cidrs and sort order are merged",
+			network: providerconfig.NetworkOpts{
+				ExternalIPCIDRS: "192.168.0.0/16,!fd00:1234:5678::/64",
+				IPSortOrder:     "192.168.0.0/16,!10.0.0.0/8",
+			},
+			expectedExternal: []string{"192.168.0.0/16"},
+			expectedSort:     []string{"192.168.0.0/16"},
+			expectedIgnored:  []string{"10.0.0.0/8", "fd00:1234:5678::/64"},
+		},
+		{
+			msg: "external cidrs without exclusion",
+			network: providerconfig.NetworkOpts{
+				ExternalIPCIDRS: "192.168.0.0/16",
+			},
+			expectedExternal: []string{"192.168.0.0/16"},
+			expectedSort:     []string{},
+			expectedIgnored:  []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.msg, func(t *testing.T) {
+			t.Parallel()
+
+			i := newInstances(&client{}, providerconfig.ClustersFeatures{Network: tt.network})
+
+			assert.Equal(t, tt.expectedExternal, cidrStrings(i.networkOpts.ExternalCIDRs))
+			assert.Equal(t, tt.expectedSort, cidrStrings(i.networkOpts.SortOrder))
+			assert.Equal(t, tt.expectedIgnored, cidrStrings(i.networkOpts.IgnoredCIDRs))
 		})
 	}
 }
