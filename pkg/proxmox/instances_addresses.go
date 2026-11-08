@@ -136,7 +136,7 @@ func (i *instances) retrieveQemuAddresses(ctx context.Context, info *instanceInf
 
 func (i *instances) processIP(_ context.Context, addresses *[]v1.NodeAddress, addr string) {
 	ip := net.ParseIP(addr)
-	if ip == nil || ip.IsLoopback() {
+	if ip == nil || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
 		return
 	}
 
@@ -147,7 +147,7 @@ func (i *instances) processIP(_ context.Context, addresses *[]v1.NodeAddress, ad
 			return
 		}
 
-		if ip.IsPrivate() || ip.IsLinkLocalUnicast() {
+		if ip.IsPrivate() {
 			return
 		}
 	}
