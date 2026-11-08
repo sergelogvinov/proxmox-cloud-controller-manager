@@ -78,6 +78,15 @@ func newFakeProxmoxClusters(t *testing.T) (cluster1URL, cluster2URL string) {
 		SMBios1: &qemu.SMBios1{UUID: "11833f4c-341f-4bd3-aad7-f7abed000001"},
 	}, fakeapi.WithStatus(qemu.VMStatusRunning))
 
+	// Proxmox accepts upper case letters in VM names, while kubelet
+	// lower-cases the hostname it registers the node with.
+	cluster1.Node("pve-3").AddVM(102, &qemu.Config{
+		Name:    "Cluster-1-Node-3",
+		Cores:   new(1),
+		Memory:  &qemu.Memory{Current: new(2048)},
+		SMBios1: &qemu.SMBios1{UUID: "11833f4c-341f-4bd3-aad7-f7abed000002"},
+	}, fakeapi.WithStatus(qemu.VMStatusRunning))
+
 	// pve-4 is down: its guest is seeded directly with status "unknown"
 	// (fakeapi does not itself flip a failed node's guest resources to
 	// "unknown" - see Cluster.FailNode's doc comment) and the node is
@@ -299,6 +308,24 @@ func (ts *configuredTestSuite) TestInstanceExists() {
 				},
 			},
 			expected: false,
+		},
+		{
+			msg: "NodeExistsUpperCaseVMName",
+			node: &v1.Node{
+				Name: "cluster-1-node-3",
+				Spec: v1.NodeSpec{
+					ProviderID: ternary(ts.i.provider == provider.ProviderIDTypeCapmox,
+						"proxmox://11833f4c-341f-4bd3-aad7-f7abed000002",
+						"proxmox://cluster-1/102",
+					),
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abed000002",
+					},
+				},
+			},
+			expected: true,
 		},
 		{
 			msg: "NodeExistsOfflinePVENode",
@@ -773,6 +800,52 @@ func (ts *configuredTestSuite) TestInstanceMetadata() {
 				AdditionalLabels: map[string]string{
 					"topology.proxmox.sinextra.dev/region": "cluster-1",
 					"topology.proxmox.sinextra.dev/zone":   "pve-1",
+				},
+			},
+		},
+		{
+			msg: "NodeExistsUpperCaseVMName",
+			node: &v1.Node{
+				Name: "cluster-1-node-3",
+				Annotations: map[string]string{
+					cloudproviderapi.AnnotationAlphaProvidedIPAddr: "1.2.3.4",
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						SystemUUID: "11833f4c-341f-4bd3-aad7-f7abed000002",
+					},
+				},
+				Spec: v1.NodeSpec{
+					Taints: []v1.Taint{
+						{
+							Key:    cloudproviderapi.TaintExternalCloudProvider,
+							Value:  "true",
+							Effect: v1.TaintEffectNoSchedule,
+						},
+					},
+				},
+			},
+			expected: &cloudprovider.InstanceMetadata{
+				ProviderID: ternary(ts.i.provider == provider.ProviderIDTypeCapmox,
+					"proxmox://11833f4c-341f-4bd3-aad7-f7abed000002",
+					"proxmox://cluster-1/102",
+				),
+				NodeAddresses: []v1.NodeAddress{
+					{
+						Type:    v1.NodeHostName,
+						Address: "cluster-1-node-3",
+					},
+					{
+						Type:    v1.NodeInternalIP,
+						Address: "1.2.3.4",
+					},
+				},
+				InstanceType: "1VCPU-2GB",
+				Region:       "cluster-1",
+				Zone:         "pve-3",
+				AdditionalLabels: map[string]string{
+					"topology.proxmox.sinextra.dev/region": "cluster-1",
+					"topology.proxmox.sinextra.dev/zone":   "pve-3",
 				},
 			},
 		},

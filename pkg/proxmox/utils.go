@@ -221,7 +221,7 @@ func findVMByMatch(ctx context.Context, pool *proxmoxpool.ProxmoxPool, name, uui
 					return false, nil //nolint: nilerr
 				}
 
-				if name != "" && !strings.HasPrefix(rs.Name, name) {
+				if name != "" && !strings.HasPrefix(strings.ToLower(rs.Name), strings.ToLower(name)) {
 					return false, nil
 				}
 

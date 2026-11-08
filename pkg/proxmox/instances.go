@@ -343,7 +343,7 @@ func (i *instances) getInstanceInfo(ctx context.Context, node *v1.Node) (*instan
 		return nil, cloudprovider.InstanceNotFound
 	}
 
-	if !strings.HasPrefix(info.Name, node.Name) {
+	if !strings.HasPrefix(strings.ToLower(info.Name), strings.ToLower(node.Name)) {
 		klog.Errorf("instances.getInstanceInfo() node %s does not match VM name=%s", node.Name, info.Name)
 
 		return nil, cloudprovider.InstanceNotFound
