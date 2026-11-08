@@ -221,6 +221,27 @@ features:
 	assert.NotNil(t, err)
 }
 
+func TestProviderConfig(t *testing.T) {
+	// Empty config results in default provider
+	cfg, err := providerconfig.ReadCloudConfig(strings.NewReader(`---`))
+	assert.Nil(t, err)
+	assert.Equal(t, provider.ProviderIDTypeDefault, cfg.Features.Provider)
+
+	cfg, err = providerconfig.ReadCloudConfig(strings.NewReader(`
+features:
+  provider: capmox
+`))
+	assert.Nil(t, err)
+	assert.Equal(t, provider.ProviderIDTypeCapmox, cfg.Features.Provider)
+
+	// Invalid provider value results in error
+	_, err = providerconfig.ReadCloudConfig(strings.NewReader(`
+features:
+  provider: capmx
+`))
+	assert.ErrorIs(t, err, providerconfig.ErrInvalidProvider)
+}
+
 func TestReadCloudConfigFromFile(t *testing.T) {
 	cfg, err := providerconfig.ReadCloudConfigFromFile("testdata/cloud-config.yaml")
 	assert.NotNil(t, err)
