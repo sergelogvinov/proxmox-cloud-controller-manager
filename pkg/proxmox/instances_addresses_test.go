@@ -94,3 +94,58 @@ func TestRemoveFromNodeAddresses(t *testing.T) {
 		})
 	}
 }
+
+func TestProcessIP(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		msg      string
+		address  string
+		expected []v1.NodeAddress
+	}{
+		{
+			msg:      "private ipv4",
+			address:  "10.0.0.1",
+			expected: []v1.NodeAddress{{Type: v1.NodeInternalIP, Address: "10.0.0.1"}},
+		},
+		{
+			msg:      "global ipv6",
+			address:  "2001:db8::1",
+			expected: []v1.NodeAddress{{Type: v1.NodeInternalIP, Address: "2001:db8::1"}},
+		},
+		{
+			msg:     "loopback ipv4",
+			address: "127.0.0.1",
+		},
+		{
+			msg:     "link-local ipv4 from nodelocaldns",
+			address: "169.254.20.10",
+		},
+		{
+			msg:     "link-local ipv6",
+			address: "fe80::1",
+		},
+		{
+			msg:     "unique local ipv6",
+			address: "fd00::1",
+		},
+		{
+			msg:     "invalid address",
+			address: "not-an-ip",
+		},
+	}
+
+	i := &instances{}
+
+	for _, tt := range tests {
+		t.Run(tt.msg, func(t *testing.T) {
+			t.Parallel()
+
+			var addresses []v1.NodeAddress
+
+			i.processIP(t.Context(), &addresses, tt.address)
+
+			assert.Equal(t, tt.expected, addresses)
+		})
+	}
+}
