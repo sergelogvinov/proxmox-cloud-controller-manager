@@ -64,8 +64,12 @@ type instances struct {
 var instanceTypeNameRegexp = regexp.MustCompile(`(^[a-zA-Z0-9_.-]+)$`)
 
 func newInstances(client *client, features providerconfig.ClustersFeatures) *instances {
-	externalIPCIDRs := ParseCIDRList(features.Network.ExternalIPCIDRS)
-	if len(features.Network.ExternalIPCIDRS) > 0 && len(externalIPCIDRs) == 0 {
+	externalIPCIDRs, externalIgnoredCIDRs, err := ParseCIDRRuleset(features.Network.ExternalIPCIDRS)
+	if err != nil {
+		klog.Errorf("Failed to parse external CIDRs: %v", err)
+	}
+
+	if len(features.Network.ExternalIPCIDRS) > 0 && (len(externalIPCIDRs)+len(externalIgnoredCIDRs)) == 0 {
 		klog.Warningf("Failed to parse external CIDRs: %v", features.Network.ExternalIPCIDRS)
 	}
 
@@ -77,6 +81,8 @@ func newInstances(client *client, features providerconfig.ClustersFeatures) *ins
 	if len(features.Network.IPSortOrder) > 0 && (len(sortOrderCIDRs)+len(ignoredCIDRs)) == 0 {
 		klog.Warningf("Failed to parse sort order CIDRs: %v", features.Network.IPSortOrder)
 	}
+
+	ignoredCIDRs = append(ignoredCIDRs, externalIgnoredCIDRs...)
 
 	netOps := instanceNetops{
 		ExternalCIDRs:       externalIPCIDRs,
