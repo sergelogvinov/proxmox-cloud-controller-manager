@@ -47,6 +47,9 @@ const (
 // ValidNetworkModes is a list of valid network modes.
 var ValidNetworkModes = []NetworkMode{NetworkModeDefault, NetworkModeOnlyQemu, NetworkModeAuto}
 
+// ValidProviders is a list of valid provider types.
+var ValidProviders = []provider.IDType{provider.ProviderIDTypeDefault, provider.ProviderIDTypeCapmox}
+
 // NetworkOpts specifies the network options for the cloud provider.
 type NetworkOpts struct {
 	ExternalIPCIDRS     string      `yaml:"external_ip_cidrs,omitempty"`
@@ -88,6 +91,7 @@ var (
 	ErrInvalidAuthCredentials = errors.New("must specify one of user, token or file credentials, not multiple")
 	ErrInvalidCloudConfig     = errors.New("invalid cloud config")
 	ErrInvalidNetworkMode     = fmt.Errorf("invalid network mode, valid modes are %v", ValidNetworkModes)
+	ErrInvalidProvider        = fmt.Errorf("invalid provider, valid providers are %v", ValidProviders)
 )
 
 // ReadCloudConfig reads cloud config from a reader.
@@ -124,6 +128,10 @@ func ReadCloudConfig(config io.Reader) (ClustersConfig, error) {
 
 	if cfg.Features.Provider == "" {
 		cfg.Features.Provider = provider.ProviderIDTypeDefault
+	}
+
+	if !slices.Contains(ValidProviders, cfg.Features.Provider) {
+		return ClustersConfig{}, ErrInvalidProvider
 	}
 
 	if cfg.Features.Network.Mode == "" {
